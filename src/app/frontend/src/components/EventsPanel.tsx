@@ -119,9 +119,10 @@ function nombreAmigable(nombre: string): string {
 
 interface Props {
   resultado: CompararResponse | null;
+  dia?: number;
 }
 
-export default function EventsPanel({ resultado }: Props) {
+export default function EventsPanel({ resultado, dia }: Props) {
   if (!resultado) {
     return (
       <Card title="Eventos epidemiológicos">
@@ -135,9 +136,12 @@ export default function EventsPanel({ resultado }: Props) {
   return (
     <Card title="Eventos epidemiológicos">
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {eventos.map((e, i) => (
-          <div key={i} className="alert-item" style={{ background: "rgba(255,255,255,0.03)", borderColor: "var(--border)" }}>
-            <div style={{ minWidth: 46, fontWeight: 700, color: "var(--muted)", fontSize: 12 }}>
+        {eventos.map((e, i) => {
+          const diaEvento = typeof e.dia === "number" ? e.dia : null;
+          const activo = dia != null && diaEvento != null && diaEvento <= dia;
+          return (
+          <div key={i} className="alert-item" style={{ background: activo ? "rgba(56,232,154,0.06)" : "rgba(255,255,255,0.03)", borderColor: activo ? "rgba(56,232,154,0.4)" : "var(--border)", opacity: dia != null && !activo ? 0.55 : 1 }}>
+            <div style={{ minWidth: 46, fontWeight: 700, color: activo ? "var(--green)" : "var(--muted)", fontSize: 12 }}>
               Día {e.dia}
             </div>
             <div style={{ flex: 1 }}>
@@ -148,7 +152,8 @@ export default function EventsPanel({ resultado }: Props) {
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{e.detalle}</div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
