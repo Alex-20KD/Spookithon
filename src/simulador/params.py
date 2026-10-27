@@ -75,11 +75,11 @@ class Params:
     beta: float = 0.015625
 
     # Vía de transmisión: "mordidas", "esporas" o "combinada".
-    via_transmision: str = "combinada"
+    via_transmision: str = "mordidas"
     beta_espora: float = 0.015625
 
     # --- Movilidad zombie ---
-    movilidad_zombie: float = 0.05  # prob. diaria de que un zombi se desplace a un barrio vecino
+    movilidad_zombie: float = 0.0  # prob. diaria de que un zombi se desplace a un barrio vecino (opt-in)
     # --- Intervenciones ---
     dia_medidas: int = 4  # supuesto de diseño (día en que empiezan las medidas)
     dia_vacuna: int = 10  # supuesto de diseño (llegada de la vacuna)
