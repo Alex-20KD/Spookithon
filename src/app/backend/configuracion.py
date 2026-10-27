@@ -45,7 +45,7 @@ class Configuracion:
 
     cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:5173"])
     n_corridas_max: int = 300
-    dias_max: int = 90
+    dias_max: int = 100
     max_simulaciones: int = 2
     max_workers: int = 0  # 0 => usar os.cpu_count()
     aviso_simulado: str = "DATOS SIMULADOS"
@@ -62,7 +62,7 @@ def cargar_configuracion() -> Configuracion:
     return Configuracion(
         cors_origins=_leer_lista("CORS_ORIGINS", ["http://localhost:5173"]),
         n_corridas_max=_leer_int("N_CORRIDAS_MAX", 300),
-        dias_max=_leer_int("DIAS_MAX", 90),
+        dias_max=_leer_int("DIAS_MAX", 100),
         max_simulaciones=_leer_int("MAX_SIMULACIONES", 2),
         max_workers=_leer_int("MAX_WORKERS", 0, minimo=0),
         aviso_simulado=os.getenv("AVISO_SIMULADO", "DATOS SIMULADOS"),
