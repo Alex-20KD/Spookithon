@@ -53,10 +53,25 @@ class Resultado:
 class Simulacion:
     """Una corrida de la epidemia con una estrategia dada."""
 
-    def __init__(self, params: Params, red: Red, estrategia, semilla: int | None = None):
+    def __init__(
+        self,
+        params: Params,
+        red: Red,
+        estrategia,
+        semilla: int | None = None,
+        atribuir: bool = False,
+    ):
         self.params = params
         self.red = red
         self.estrategia = estrategia
+        # Atribución fraccional de infector (para medir R0). Apagada por
+        # defecto: cuando está apagada, el modelo produce EXACTAMENTE los mismos
+        # resultados que antes porque no se consumen números aleatorios nuevos
+        # ni se altera ninguna decisión.
+        self.atribuir = atribuir
+        # infecciones_causadas[j] = nº (fraccional) de infecciones directas que
+        # causó la persona j. Solo se llena si atribuir=True.
+        self.infecciones_causadas = np.zeros(red.n_personas, dtype=np.float64)
 
         base = params.semilla if semilla is None else semilla
         # Dos streams independientes derivados de la misma semilla base.
@@ -279,7 +294,65 @@ class Simulacion:
         sanos = self.estado == SANO
         sorteo = self.rng.random(self.red.n_personas)
         nuevos = np.where(sanos & (sorteo < prob_inf))[0]
+
+        # Atribución fraccional de infector (opcional, sin azar nuevo).
+        if self.atribuir and nuevos.size > 0:
+            self._atribuir_infectores(
+                nuevos, idx, lug_p, per_p, infect_persona, carga_lugar,
+                lambda_lugar, lambda_persona,
+            )
+
         return nuevos
+
+    def _atribuir_infectores(
+        self, nuevos, idx, lug_p, per_p, infect_persona, carga_lugar,
+        lambda_lugar, lambda_persona,
+    ) -> None:
+        """Reparte cada infección de forma fraccional entre sus posibles infectores.
+
+        Idea: una persona recién infectada ``s`` recibió una "fuerza de
+        infección" ``lambda_persona[s]`` compuesta por el aporte de cada lugar
+        donde estuvo presente. Dentro de un lugar, ese aporte se debe a los
+        infecciosos presentes, en proporción a su infectividad. Repartimos 1.0
+        infección (la de ``s``) entre todos esos infecciosos usando esas
+        proporciones. No se usan números aleatorios: es pura aritmética sobre
+        cantidades ya calculadas, por eso no altera la dinámica.
+        """
+        # Trabajamos solo con las aristas (persona presente, lugar) cuya persona
+        # es una recién infectada: son las que "reciben" la infección.
+        es_nuevo = np.zeros(self.red.n_personas, dtype=bool)
+        es_nuevo[nuevos] = True
+        mask_rx = es_nuevo[per_p]  # aristas de personas recién infectadas
+        if not np.any(mask_rx):
+            return
+
+        s_arista = per_p[mask_rx]          # persona recién infectada
+        l_arista = lug_p[mask_rx]          # lugar de esa arista
+
+        # Peso de la arista = aporte del lugar a la fuerza total de s:
+        #   lambda_lugar[l] / lambda_persona[s]
+        lam_s = lambda_persona[s_arista]
+        lam_s = np.where(lam_s > 0, lam_s, 1.0)  # evita 0/0 (no debería pasar)
+        peso_lugar_para_s = lambda_lugar[l_arista] / lam_s
+
+        # Ahora, dentro de cada lugar, repartimos ese peso entre los infecciosos
+        # presentes proporcional a su infectividad / carga_lugar[l].
+        # Iteramos sobre las aristas-infecciosas presentes del mismo lugar.
+        infect_arista_pres = infect_persona[per_p]  # infectividad por arista presente
+        mask_inf = infect_arista_pres > 0           # aristas de infecciosos presentes
+        j_arista = per_p[mask_inf]
+        lj_arista = lug_p[mask_inf]
+        infj = infect_arista_pres[mask_inf]
+
+        # Agrupamos los "receptores" por lugar para combinar con los infecciosos.
+        # Para cada lugar l: total_rx_peso[l] = suma de peso_lugar_para_s sobre
+        # receptores en l. Cada infeccioso j en l recibe:
+        #   total_rx_peso[l] * (infj / carga_lugar[l])
+        n_lug = self.red.n_lugares
+        total_rx_peso = np.bincount(l_arista, weights=peso_lugar_para_s, minlength=n_lug)
+        carga_segura = np.where(carga_lugar > 0, carga_lugar, 1.0)
+        aporte_j = total_rx_peso[lj_arista] * (infj / carga_segura[lj_arista])
+        np.add.at(self.infecciones_causadas, j_arista, aporte_j)
 
     # ------------------------------------------------------------------ #
     # (c) Progresión de estados
