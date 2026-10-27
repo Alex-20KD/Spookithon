@@ -8,6 +8,7 @@ import Pill from "../components/ui/Pill";
 import EpidemicMap from "../components/map/EpidemicMap";
 import EventsPanel from "../components/EventsPanel";
 import type { CatalogoResponse } from "../types/api";
+import type { BarrioMapa } from "../types/api";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
 
@@ -18,13 +19,44 @@ const NIVELES: { color: string; etiqueta: string }[] = [
   { color: "#8B1E2D", etiqueta: "Crítico" },
 ];
 
+const ESTRATEGIAS = ["Nada", "Azar", "Centralidad", "CierresMasCentralidad", "Anillo"];
+const NOMBRES: Record<string, string> = {
+  Nada: "Sin intervención",
+  Azar: "Vacunación al azar",
+  Centralidad: "Por centralidad",
+  CierresMasCentralidad: "Cierres + centralidad",
+  Anillo: "Anillo",
+};
+
 export default function MapPage() {
-  const { resultado, cargando, error, dia, setDia, params } = useSimulation();
+  const {
+    resultado,
+    cargando,
+    error,
+    dia,
+    setDia,
+    params,
+    paramsEjecutados,
+    trayectoria,
+    estrategiaSeleccionada,
+    setEstrategiaSeleccionada,
+    cargarTrayectoria,
+    paramsModificados,
+  } = useSimulation();
   const [catalogo, setCatalogo] = useState<CatalogoResponse | null>(null);
   const [reproduciendo, setReproduciendo] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
+  const [cargandoTray, setCargandoTray] = useState(false);
 
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    obtenerCatalogo(ctrl.signal)
+      .then(setCatalogo)
+      .catch(() => setCatalogo(null));
+    return () => ctrl.abort();
+  }, []);
 
   useEffect(() => {
     if (!reproduciendo) {
@@ -51,22 +83,50 @@ export default function MapPage() {
     };
   }, [reproduciendo, velocidad, params.dias, setDia]);
 
-  // El catálogo es geografía fija; se carga una vez para los edificios de
-  // referencia. Si falla, el mapa igual funciona con los barrios del resultado.
+  // Cargar trayectoria inicial cuando hay simulación y no hay trayectoria.
   useEffect(() => {
-    const ctrl = new AbortController();
-    obtenerCatalogo(ctrl.signal)
-      .then(setCatalogo)
-      .catch(() => setCatalogo(null));
-    return () => ctrl.abort();
-  }, []);
+    if (resultado && !trayectoria && !cargandoTray && paramsEjecutados) {
+      setCargandoTray(true);
+      cargarTrayectoria(estrategiaSeleccionada).finally(() => setCargandoTray(false));
+    }
+  }, [resultado, trayectoria, paramsEjecutados]);
 
-  const mapa = resultado?.mapa ?? null;
+  const cambiarEstrategia = async (e: string) => {
+    setEstrategiaSeleccionada(e);
+    if (paramsEjecutados) {
+      setCargandoTray(true);
+      await cargarTrayectoria(e);
+      setCargandoTray(false);
+    }
+  };
+
+  // Barrios para el día seleccionado.
+  let barriosDia: BarrioMapa[] = [];
+  let diaGlobal = trayectoria?.serie_global?.[dia] ?? null;
+
+  if (trayectoria) {
+
+    barriosDia = trayectoria.serie_por_barrio.map((b) => {
+      const punto = b.puntos[dia] ?? b.puntos[b.puntos.length - 1];
+      const acum = punto?.infectados_acumulados ?? 0;
+      return {
+        id: b.id,
+        nombre: b.nombre,
+        lat: b.lat,
+        lng: b.lng,
+        infectados_media: acum,
+      } as BarrioMapa;
+    });
+  } else if (resultado?.mapa) {
+    barriosDia = resultado.mapa.barrios;
+  }
+
+  const mapa = barriosDia.length ? { barrios: barriosDia, estrategia: trayectoria?.estrategia ?? resultado?.mapa?.estrategia ?? "" } : null;
 
   const cabecera = (
     <PageTitle
       title="Mapa Epidemiológico"
-      subtitle="Infectados por barrio según la mejor estrategia"
+      subtitle="Evolución diaria por barrio según la trayectoria seleccionada"
       right={<Pill color="orange">DATOS SIMULADOS</Pill>}
     />
   );
@@ -98,7 +158,7 @@ export default function MapPage() {
     );
   }
 
-  if (!mapa) {
+  if (!resultado) {
     return (
       <div>
         {cabecera}
@@ -113,26 +173,50 @@ export default function MapPage() {
     );
   }
 
-  // Ranking de barrios por infectados (para la tabla lateral).
-  const ranking = [...mapa.barrios]
+  const ranking = [...barriosDia]
     .filter((b) => b.infectados_media != null)
     .sort((a, b) => (b.infectados_media as number) - (a.infectados_media as number));
 
   return (
     <div>
       {cabecera}
+
+      {paramsModificados && (
+        <Card>
+          <div className="error-box" role="alert">
+            Los parámetros cambiaron. Ejecuta nuevamente la simulación para actualizar la trayectoria.
+          </div>
+        </Card>
+      )}
+
+      <div style={{ height: 12 }} />
+
+      <Card title="Estrategia de la trayectoria">
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            value={estrategiaSeleccionada}
+            onChange={(e) => cambiarEstrategia(e.target.value)}
+            style={selectStyle}
+          >
+            {ESTRATEGIAS.map((e) => (
+              <option key={e} value={e}>
+                {NOMBRES[e]}
+              </option>
+            ))}
+          </select>
+          {cargandoTray && <span className="loading-inline"><span className="spinner" /> Cargando trayectoria…</span>}
+        </div>
+      </Card>
+
+      <div style={{ height: 12 }} />
+
       <div className="split">
         <div>
-          <EpidemicMap barrios={mapa.barrios} catalogo={catalogo} dia={dia} />
+          {mapa && <EpidemicMap barrios={mapa.barrios} catalogo={catalogo} dia={dia} />}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
-            La reproducción por día es una <strong>demostración ilustrativa</strong>: la API
-            no devuelve series geográficas por día, por lo que el mapa agregado no cambia
-            con el día.
-          </div>
-          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
-            Coordenadas del catálogo (ficticias). El tamaño y color de cada
-            barrio reflejan los infectados medios de la estrategia{" "}
-            <strong>{mapa.estrategia}</strong>.
+            {trayectoria
+              ? "La evolución por día proviene de una trayectoria real del simulador (una corrida determinista)."
+              : "Modo agregado: ejecuta una simulación para obtener una trayectoria diaria."}
           </div>
         </div>
 
@@ -144,6 +228,9 @@ export default function MapPage() {
               </button>
               <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.min(params.dias, dia + 1))}>
                 Avanzar día
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.max(0, dia - 1))}>
+                Retroceder
               </button>
               <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setReproduciendo(false); setDia(0); }}>
                 Reiniciar
@@ -174,13 +261,25 @@ export default function MapPage() {
               <input
                 type="range"
                 min={0.5}
-                max={4}
+                max={3}
                 step={0.5}
                 value={velocidad}
                 onChange={(e) => setVelocidad(Number(e.target.value))}
               />
             </div>
           </Card>
+
+          {diaGlobal && (
+            <Card title="Estado del día">
+              <div style={{ fontSize: 13, display: "grid", gap: 4 }}>
+                <div>Zombis activos: <strong>{num(diaGlobal.ZOMBI)}</strong></div>
+                <div>Nuevos contagios: <strong>{num(diaGlobal.nuevos_contagios)}</strong></div>
+                <div>Inmunes: <strong>{num(diaGlobal.INMUNE)}</strong></div>
+                <div>Infectados acumulados: <strong>{num(trayectoria?.infectados_totales ?? 0)}</strong></div>
+              </div>
+            </Card>
+          )}
+
           <Card title="Nivel de riesgo">
             <div className="legend">
               {NIVELES.map((n) => (
@@ -189,10 +288,6 @@ export default function MapPage() {
                   {n.etiqueta}
                 </div>
               ))}
-              <div className="legend-item">
-                <span className="legend-dot" style={{ background: "#4DA8FF" }} />
-                Edificio (hospital, mercado, colegio)
-              </div>
             </div>
           </Card>
 
@@ -202,7 +297,7 @@ export default function MapPage() {
                 <thead>
                   <tr>
                     <th>Barrio</th>
-                    <th>Infectados (media)</th>
+                    <th>Infectados acum.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,3 +319,12 @@ export default function MapPage() {
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: 8,
+  background: "#0C141D",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+};

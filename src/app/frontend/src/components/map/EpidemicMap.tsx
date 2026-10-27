@@ -102,7 +102,6 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
     map.on("load", () => {
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      map.addSource("zonas3d", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
       map.addLayer({
@@ -122,19 +121,6 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 40],
           "heatmap-opacity": 0.55,
-        },
-      });
-
-      // Zonas 3D agregadas por barrio (representación de magnitud, ilustrativa).
-      map.addLayer({
-        id: "zonas3d",
-        type: "fill-extrusion",
-        source: "zonas3d",
-        paint: {
-          "fill-extrusion-color": ["get", "color"],
-          "fill-extrusion-height": ["get", "altura"],
-          "fill-extrusion-base": 0,
-          "fill-extrusion-opacity": 0.75,
         },
       });
 
@@ -269,36 +255,6 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
     (map.getSource("barrios") as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features,
-    });
-
-    // Zonas 3D agregadas por barrio (ilustrativas de magnitud).
-    const zonas = conGeo.map((b) => {
-      const inf = b.infectados_media ?? 0;
-      const ratio = inf / maxInf;
-      const lado = 0.009;
-      const lng = b.lng as number;
-      const lat = b.lat as number;
-      const coords = [
-        [lng - lado, lat - lado],
-        [lng + lado, lat - lado],
-        [lng + lado, lat + lado],
-        [lng - lado, lat + lado],
-        [lng - lado, lat - lado],
-      ];
-      return {
-        type: "Feature" as const,
-        geometry: { type: "Polygon" as const, coordinates: [coords] },
-        properties: {
-          nombre: b.nombre,
-          altura: Math.max(18, ratio * 150),
-          color: colorRiesgo(ratio),
-          ratio,
-        },
-      };
-    });
-    (map.getSource("zonas3d") as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features: zonas,
     });
 
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
