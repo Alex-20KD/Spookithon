@@ -181,3 +181,5 @@ class ParametrosTrayectoria(BaseModel):
         default="Nada",
         description="Estrategia a simular en la trayectoria.",
     )
+    movilidad_zombie: float | None = Field(default=None, ge=0.0, le=1.0)
+    eventos: list[dict] | None = Field(default=None, description="Eventos de brote sorpresa.")

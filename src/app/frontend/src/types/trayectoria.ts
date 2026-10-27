@@ -38,6 +38,8 @@ export interface TrayectoriaRequest {
   infect_portador?: number;
   dias?: number;
   semilla?: number;
+  movilidad_zombie?: number;
+  eventos?: { tipo: string; dia: number; barrio_id?: string; intensidad?: number; duracion?: number; nombre?: string }[];
   estrategia: string;
 }
 

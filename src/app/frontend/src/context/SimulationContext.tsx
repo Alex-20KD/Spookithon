@@ -169,6 +169,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         infect_portador: baseParams.infect_portador,
         dias: baseParams.dias,
         semilla: baseParams.semilla,
+        movilidad_zombie: 0.05,
         estrategia: estr,
       };
       const res = await obtenerTrayectoria(cuerpo);

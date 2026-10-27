@@ -241,6 +241,7 @@ def correr_trayectoria(
     params: Params,
     estrategia_nombre: str,
     semilla: int | None = None,
+    eventos: list | None = None,
 ) -> dict:
     """Ejecuta UNA corrida determinista con registro diario por barrio.
 
@@ -251,7 +252,7 @@ def correr_trayectoria(
     red = construir_red(params.poblacion, base)
     estrategia = _estrategia_por_nombre(estrategia_nombre)
     sim = Simulacion(
-        params, red, estrategia, semilla=base, registrar_trayectoria=True
+        params, red, estrategia, semilla=base, registrar_trayectoria=True, eventos=eventos
     )
     res = sim.correr()
     return {

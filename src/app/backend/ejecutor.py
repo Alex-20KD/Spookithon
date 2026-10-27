@@ -53,11 +53,11 @@ def _worker_corrida(
     }
 
 
-def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int) -> dict:
+def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
     """Ejecuta una sola corrida con registro diario por barrio."""
     from simulador import corridas as _corridas_sim
 
-    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla)
+    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla, eventos)
 
 
 class Ejecutor:
@@ -129,7 +129,7 @@ class Ejecutor:
             self._en_curso -= 1
             self._semaforo.release()
 
-    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int) -> dict:
+    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
         """Ejecuta una corrida determinista con trayectoria diaria."""
         if self._en_curso >= self._max_simulaciones:
             raise ServidorOcupado()
@@ -138,7 +138,7 @@ class Ejecutor:
         try:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(
-                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla
+                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla, eventos
             )
         finally:
             self._en_curso -= 1

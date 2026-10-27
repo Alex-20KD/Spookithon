@@ -189,7 +189,7 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
         if entrada.semilla is not None:
             params = params.con(semilla=entrada.semilla)
         resumen = await app.state.ejecutor.trayectoria(
-            params, entrada.estrategia, params.semilla
+            params, entrada.estrategia, params.semilla, entrada.eventos
         )
         return _armar_trayectoria(resumen, params, cfg)
 
@@ -204,7 +204,10 @@ def _construir_params(entrada: ParametrosComparar) -> Params:
     for campo in (
         "beta", "dosis_dia", "eficacia_vacuna", "lugar_inicio",
         "dias_detectar", "infect_portador", "dias", "semilla",
+        "movilidad_zombie",
     ):
+        if not hasattr(entrada, campo):
+            continue
         valor = getattr(entrada, campo)
         if valor is not None:
             cambios[campo] = valor

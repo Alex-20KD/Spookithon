@@ -69,6 +69,7 @@ class Simulacion:
         semilla: int | None = None,
         atribuir: bool = False,
         registrar_trayectoria: bool = False,
+        eventos: list | None = None,
     ):
         self.params = params
         self.red = red
@@ -79,6 +80,10 @@ class Simulacion:
         # ni se altera ninguna decisión.
         self.atribuir = atribuir
         self.registrar_trayectoria = registrar_trayectoria
+        self.eventos = list(eventos or [])
+        self._eventos_por_dia: dict[int, list[dict]] = {}
+        for ev in self.eventos:
+            self._eventos_por_dia.setdefault(int(ev.get("dia", 0)), []).append(ev)
         self.trayectoria: list | None = [] if registrar_trayectoria else None
         # infecciones_causadas[j] = nº (fraccional) de infecciones directas que
         # causó la persona j. Solo se llena si atribuir=True.
@@ -126,6 +131,10 @@ class Simulacion:
             self._pos_barrio[red.barrio_persona == lugar_idx] = pos
         self._ids_barrio = list(red.barrios_ids)
         self._dosis_prev = 0
+        self._barrios_con_contagio: set[str] = set()
+        self._movimientos_hoy: list[dict] = []
+        self._zombie_corredor_activo = False
+        self._fallo_contencion_activo = False
 
         self._sembrar()
 
@@ -158,6 +167,24 @@ class Simulacion:
         if self.registrar_trayectoria:
             self._registrar_trayectoria(0, np.asarray(sembrados, dtype=np.int64))
         self._registrar_curva(0)
+
+    def _aplicar_evento(self, ev: dict, dia: int) -> None:
+        tipo = ev.get("tipo")
+        if tipo == "brote_secundario":
+            barrio_id = ev.get("barrio_id")
+            n = int(ev.get("intensidad", 1))
+            if barrio_id in self._ids_barrio:
+                pos = self._ids_barrio.index(barrio_id)
+                candidatos = np.where((self._pos_barrio == pos) & (self.estado == SANO))[0]
+                if candidatos.size > 0:
+                    elegidos = self.rng.choice(candidatos, size=min(n, candidatos.size), replace=False)
+                    self._infectar(elegidos, dia)
+        elif tipo == "zombie_corredor":
+            self._zombie_corredor_activo = True
+            self._zombie_corredor_fin = dia + int(ev.get("duracion", 5))
+        elif tipo == "fallo_contencion":
+            self._fallo_contencion_activo = True
+            self._fallo_contencion_fin = dia + int(ev.get("duracion", 5))
 
     def _infectar(self, personas: np.ndarray, dia: int) -> None:
         """Marca a ``personas`` como INCUBANDO y les asigna su tiempo de conversión."""
@@ -221,11 +248,29 @@ class Simulacion:
         if int(self.cerrado.sum()) > 0:
             eventos.append({"dia": dia, "tipo": "cierre", "titulo": "Cierres aplicados", "lugares": int(self.cerrado.sum())})
 
+        for ev in self._eventos_por_dia.get(dia, []):
+            eventos.append({"dia": dia, "tipo": ev.get("tipo", "evento"), "titulo": ev.get("nombre", ev.get("tipo", "evento")), "intensidad": ev.get("intensidad")})
+
+        nuevos_focos = []
+        for pbarrio in por_barrio:
+            bid = pbarrio["barrio_id"]
+            if pbarrio["infectados_acumulados"] > 0 and bid not in self._barrios_con_contagio:
+                self._barrios_con_contagio.add(bid)
+                nuevos_focos.append({
+                    "dia": int(dia),
+                    "barrio_id": bid,
+                    "nuevos_contagios": pbarrio["nuevos_contagios"],
+                    "infectados_acumulados": pbarrio["infectados_acumulados"],
+                    "zombis_activos": pbarrio["zombis_activos"],
+                })
+
         self.trayectoria.append({
             "dia": int(dia),
             "estrategia": self.estrategia.nombre,
             "global": global_dict,
             "por_barrio": por_barrio,
+            "movimientos": list(self._movimientos_hoy),
+            "nuevos_focos": nuevos_focos,
             "eventos": eventos,
         })
 
@@ -235,6 +280,10 @@ class Simulacion:
     def correr(self) -> Resultado:
         """Ejecuta la simulación completa y devuelve el :class:`Resultado`."""
         for dia in range(1, self.params.dias + 1):
+            # Aplicar eventos de brote sorpresa para este día.
+            for ev in self._eventos_por_dia.get(dia, []):
+                self._aplicar_evento(ev, dia)
+
             # (a) estrategia y aplicación de medidas
             if dia >= self.params.dia_medidas:
                 self._aplicar_estrategia(dia)
@@ -254,6 +303,12 @@ class Simulacion:
 
             # (f) registro de la curva
             self._registrar_curva(dia)
+
+            # Desactivar eventos temporales.
+            if getattr(self, "_zombie_corredor_activo", False) and dia >= getattr(self, "_zombie_corredor_fin", dia + 1):
+                self._zombie_corredor_activo = False
+            if getattr(self, "_fallo_contencion_activo", False) and dia >= getattr(self, "_fallo_contencion_fin", dia + 1):
+                self._fallo_contencion_activo = False
 
             if self.registrar_trayectoria:
                 self._registrar_trayectoria(dia, nuevos)
@@ -335,7 +390,10 @@ class Simulacion:
         # Solo protege a los realmente SANOS, con prob. eficacia.
         sanos = elegidos[self.estado[elegidos] == SANO]
         if sanos.size > 0:
-            protegidos = sanos[sorteo[: sanos.size] < self.params.eficacia_vacuna]
+            eficacia = self.params.eficacia_vacuna
+            if getattr(self, "_fallo_contencion_activo", False):
+                eficacia *= 0.5
+            protegidos = sanos[sorteo[: sanos.size] < eficacia]
             self.estado[protegidos] = INMUNE
 
     # ------------------------------------------------------------------ #
@@ -375,7 +433,10 @@ class Simulacion:
         # Infectividad por persona (según estado real).
         infect_persona = np.zeros(self.red.n_personas, dtype=np.float64)
         infect_persona[self.estado == ZOMBI] = 1.0
-        infect_persona[self.estado == PORTADOR] = self.params.infect_portador
+        factor_portador = self.params.infect_portador
+        if getattr(self, "_zombie_corredor_activo", False):
+            factor_portador *= 2.0
+        infect_persona[self.estado == PORTADOR] = factor_portador
 
         idx = np.where(presente)[0]
         lug_p = lugar[idx]
@@ -386,6 +447,41 @@ class Simulacion:
         carga_lugar = np.bincount(
             lug_p, weights=infect_persona[per_p], minlength=n_lugares
         )
+
+        # --- Movilidad zombie (reproducible, agregada) ---
+        self._movimientos_hoy = []
+        mv = float(self.params.movilidad_zombie)
+        if mv > 0:
+            zombis = np.where(self.estado == ZOMBI)[0]
+            if zombis.size > 0:
+                mover = self.rng.random(zombis.size) < mv
+                zombis_mov = zombis[mover]
+                if zombis_mov.size > 0:
+                    origenes = self._pos_barrio[zombis_mov]
+                    destinos = np.empty(zombis_mov.size, dtype=np.int64)
+                    for k, o in enumerate(origenes):
+                        vs = self.red.barrios_vecinos[o] if o < len(self.red.barrios_vecinos) else []
+                        if vs:
+                            destinos[k] = int(self.rng.choice(vs))
+                        else:
+                            destinos[k] = int(o)
+                    pares: dict[tuple[int, int], int] = {}
+                    for o, d in zip(origenes.tolist(), destinos.tolist()):
+                        if o != d:
+                            pares[(o, d)] = pares.get((o, d), 0) + 1
+                    ids = self._ids_barrio
+                    for (o, d), c in pares.items():
+                        self._movimientos_hoy.append({
+                            "origen": ids[o],
+                            "destino": ids[d],
+                            "cantidad": int(c),
+                        })
+                    for d in set(destinos.tolist()):
+                        if d < 0:
+                            continue
+                        place_idx = int(self.red.barrios_lugar_idx[d])
+                        n_mov = int((destinos == d).sum())
+                        carga_lugar[place_idx] += float(n_mov) * 1.0
 
         denom = np.sqrt(np.maximum(presentes_lugar, 1.0))
         peso_lugar = self._peso_lugar_tipo[self.red.tipo_lugar]

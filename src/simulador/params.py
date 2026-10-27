@@ -74,6 +74,8 @@ class Params:
     # (ver también scripts/calibrar_beta.py y src/simulador/r0.py).
     beta: float = 0.015625
 
+    # --- Movilidad zombie ---
+    movilidad_zombie: float = 0.05  # prob. diaria de que un zombi se desplace a un barrio vecino
     # --- Intervenciones ---
     dia_medidas: int = 4  # supuesto de diseño (día en que empiezan las medidas)
     dia_vacuna: int = 10  # supuesto de diseño (llegada de la vacuna)

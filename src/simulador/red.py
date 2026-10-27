@@ -68,6 +68,8 @@ class Red:
     barrios_lugar_idx: np.ndarray = field(
         default_factory=lambda: np.empty(0, dtype=np.int64)
     )
+    # Vecinos geográficos de cada barrio (índices de posición), para movilidad.
+    barrios_vecinos: list[list[int]] = field(default_factory=list)
 
     # --- Consultas útiles ---
 
@@ -222,6 +224,19 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         [idx_barrio[bid] for bid in barrios_ids], dtype=np.int64
     )
 
+    # Vecinos geográficos (3 más cercanos por distancia euclidiana en lat/lng).
+    n_barrios = len(barrios)
+    vecinos: list[list[int]] = [[] for _ in range(n_barrios)]
+    for i in range(n_barrios):
+        dists = []
+        for j in range(n_barrios):
+            if i == j:
+                continue
+            d = (barrios[i]["lat"] - barrios[j]["lat"]) ** 2 + (barrios[i]["lng"] - barrios[j]["lng"]) ** 2
+            dists.append((d, j))
+        dists.sort()
+        vecinos[i] = [j for _, j in dists[:3]]
+
     return Red(
         n_personas=poblacion,
         n_lugares=n_lugares,
@@ -234,4 +249,5 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         centralidad=centralidad,
         barrios_ids=barrios_ids,
         barrios_lugar_idx=barrios_lugar_idx,
+        barrios_vecinos=vecinos,
     )
