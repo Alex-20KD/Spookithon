@@ -1,0 +1,7 @@
+# Dependencias SOLO para desarrollo y pruebas.
+# NO se instalan en la imagen de Docker (ver Dockerfile).
+# TestClient de FastAPI/Starlette necesita httpx.
+-r requirements.txt
+
+pytest>=8.0
+httpx>=0.27

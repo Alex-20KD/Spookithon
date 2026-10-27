@@ -1,0 +1,20 @@
+# No copiar a la imagen lo que no se necesita en producción.
+.venv
+**/__pycache__
+**/*.pyc
+.git
+.gitignore
+.github
+node_modules
+**/node_modules
+.env
+**/.env
+.pytest_cache
+tests
+docs
+infra
+requirements-dev.txt
+
+# Artefactos y config del frontend (el backend no los necesita).
+src/app/frontend
+frontend
