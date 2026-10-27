@@ -12,7 +12,7 @@ def cliente():
     cfg = Configuracion(
         cors_origins=["http://localhost:5173"],
         n_corridas_max=10,
-        dias_max=15,
+        dias_max=105,
         max_simulaciones=2,
         max_workers=2,
     )
@@ -63,6 +63,14 @@ def test_trayectoria_estrategia_cambia_resultado(cliente):
 def test_trayectoria_parametro_invalido(cliente):
     r = cliente.post("/trayectoria", json={"dias": 8, "semilla": 42, "estrategia": "Luna"})
     assert r.status_code == 422
+
+
+def test_trayectoria_100_dias(cliente):
+    r = cliente.post("/trayectoria", json={"dias": 100, "semilla": 42, "estrategia": "Nada"})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["dias"] == 100
+    assert len(d["serie_global"]) == 101
 
 
 def test_comparar_sigue_funcionando(cliente):
