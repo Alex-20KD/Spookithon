@@ -41,13 +41,15 @@ class ServidorOcupado(Exception):
 # Esta función corre en un PROCESO hijo. Debe ser importable a nivel de módulo
 # (no una lambda ni un closure) para que ProcessPoolExecutor pueda serializarla.
 
-def _worker_corrida(params: Params, indice: int) -> dict[str, tuple[int, list[float]]]:
+def _worker_corrida(
+    params: Params, indice: int
+) -> dict[str, tuple[int, list[float], list[int]]]:
     """Ejecuta una sola corrida y devuelve datos serializables (listas, no arrays)."""
     bruto = _corridas.correr_una_corrida(params, indice)
     # Convertir numpy -> tipos nativos para pasar entre procesos sin sorpresas.
     return {
-        nombre: (int(inf), curva.tolist())
-        for nombre, (inf, curva) in bruto.items()
+        nombre: (int(inf), curva.tolist(), por_barrio.tolist())
+        for nombre, (inf, curva, por_barrio) in bruto.items()
     }
 
 
@@ -136,14 +138,16 @@ class Ejecutor:
 
         por_corrida = [
             {
-                nombre: (inf, np.asarray(curva, dtype=np.float64))
-                for nombre, (inf, curva) in corrida.items()
+                nombre: (inf, np.asarray(curva, dtype=np.float64),
+                         np.asarray(por_barrio, dtype=np.float64))
+                for nombre, (inf, curva, por_barrio) in corrida.items()
             }
             for corrida in resultados
         ]
         resumen = _corridas.resumir_corridas(params, por_corrida)
         pct = _porcentajes_mejor_que(por_corrida)
-        return _serializar_resumen(resumen, pct)
+        barrios = _corridas.barrios_orden(params)
+        return _serializar_resumen(resumen, pct, barrios)
 
 
 # ------------------------------ Caché LRU ------------------------------ #
@@ -220,11 +224,20 @@ def _porcentajes_mejor_que(
     return pct
 
 
-def _serializar_resumen(resumen: dict, pct: dict[str, dict[str, float]]) -> dict[str, Any]:
+def _serializar_resumen(
+    resumen: dict,
+    pct: dict[str, dict[str, float]],
+    barrios: list[str],
+) -> dict[str, Any]:
     """Convierte ResumenEstrategia (con arrays numpy) a dict JSON-serializable."""
     salida: dict[str, Any] = {}
     for nombre, r in resumen.items():
         p = pct.get(nombre, {"pct_mejor_que_azar": 0.0, "pct_mejor_que_nada": 0.0})
+        por_barrio = (
+            r.infectados_por_barrio_media.tolist()
+            if r.infectados_por_barrio_media is not None
+            else None
+        )
         salida[nombre] = {
             "nombre": r.nombre,
             "infectados_media": r.infectados_media,
@@ -242,5 +255,8 @@ def _serializar_resumen(resumen: dict, pct: dict[str, dict[str, float]]) -> dict
             "curva_p90": (
                 r.curva_zombis_p90.tolist() if r.curva_zombis_p90 is not None else None
             ),
+            # Infectados medios por barrio, alineados con ``barrios`` (mismo orden).
+            "infectados_por_barrio": por_barrio,
+            "barrios": list(barrios),
         }
     return salida

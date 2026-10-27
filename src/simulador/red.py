@@ -16,7 +16,7 @@ Fuentes de las proporciones (todas supuesto de diseño, escenario ficticio):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -61,6 +61,13 @@ class Red:
     personal_hospital: np.ndarray
     ids_lugar: list[str]
     centralidad: np.ndarray
+    # Barrios en orden del catálogo: id textual y su índice de lugar asociado.
+    # Permiten agregar métricas por barrio (p. ej. infectados por barrio) y
+    # traducir el índice de lugar-barrio a su id textual del catálogo.
+    barrios_ids: list[str] = field(default_factory=list)
+    barrios_lugar_idx: np.ndarray = field(
+        default_factory=lambda: np.empty(0, dtype=np.int64)
+    )
 
     # --- Consultas útiles ---
 
@@ -209,6 +216,12 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
     peso_arista = tamano[lugar] * asist_lugar[lugar]
     centralidad = np.bincount(persona, weights=peso_arista, minlength=poblacion)
 
+    # Orden canónico de barrios (el del catálogo) y sus índices de lugar.
+    barrios_ids = [b["id"] for b in barrios]
+    barrios_lugar_idx = np.array(
+        [idx_barrio[bid] for bid in barrios_ids], dtype=np.int64
+    )
+
     return Red(
         n_personas=poblacion,
         n_lugares=n_lugares,
@@ -219,4 +232,6 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         personal_hospital=personal_hospital,
         ids_lugar=ids_lugar,
         centralidad=centralidad,
+        barrios_ids=barrios_ids,
+        barrios_lugar_idx=barrios_lugar_idx,
     )
