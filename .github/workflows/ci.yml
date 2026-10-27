@@ -27,7 +27,9 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: src/app/frontend/package-lock.json
 
     - name: Test backend / simulador syntax
       run: |
@@ -38,7 +40,7 @@ jobs:
       run: |
         if [ -d "src/app/frontend" ] && [ -f "src/app/frontend/package.json" ]; then
           cd src/app/frontend
-          npm install
+          npm ci
           npm run build
         else
           echo "Frontend package.json no encontrado en src/app/frontend, omitiendo build automático por ahora."
