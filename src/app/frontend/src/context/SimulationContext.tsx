@@ -67,8 +67,8 @@ interface SimulationContextValue {
   cargando: boolean;
   error: string | null;
 
-  /** Ejecuta POST /comparar con los parámetros actuales. */
-  comparar: () => Promise<void>;
+  /** Ejecuta POST /comparar con los parámetros actuales. Devuelve el resultado o null si falla. */
+  comparar: () => Promise<CompararResponse | null>;
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
@@ -139,7 +139,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setDiaState(Math.max(0, Math.min(max, Math.round(d))));
   };
 
-  const comparar = async () => {
+  const comparar = async (): Promise<CompararResponse | null> => {
     // Cancela una comparación anterior aún en vuelo.
     comparaEnCurso.current?.abort();
     const ctrl = new AbortController();
@@ -152,13 +152,15 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
       setDiaState(0);
+      return res;
     } catch (e) {
-      if (ctrl.signal.aborted) return; // cancelada a propósito
+      if (ctrl.signal.aborted) return null; // cancelada a propósito
       setError(
         e instanceof ApiError
           ? e.message
           : "Ocurrió un error inesperado al comparar estrategias.",
       );
+      return null;
     } finally {
       if (!ctrl.signal.aborted) setCargando(false);
     }
