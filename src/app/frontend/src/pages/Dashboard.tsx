@@ -15,6 +15,7 @@ import Card from "../components/ui/Card";
 import MetricCard from "../components/ui/MetricCard";
 import PageTitle from "../components/ui/PageTitle";
 import Pill from "../components/ui/Pill";
+import EventsPanel from "../components/EventsPanel";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
 
@@ -122,6 +123,9 @@ export default function Dashboard() {
               </Card>
             </div>
           </div>
+
+          <div style={{ height: 16 }} />
+          <EventsPanel resultado={resultado} />
         </>
       )}
     </div>
