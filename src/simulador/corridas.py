@@ -38,6 +38,10 @@ class ResumenEstrategia:
     salvados_p10: float
     salvados_p90: float
     curva_zombis: np.ndarray
+    # Percentiles diarios de la curva de zombis (longitud dias+1). Son None
+    # cuando se usa comparar() clásico y se llenan con comparar_detallado().
+    curva_zombis_p10: np.ndarray | None = None
+    curva_zombis_p90: np.ndarray | None = None
 
 
 def comparar(
@@ -99,3 +103,114 @@ def comparar(
         )
 
     return resumen
+
+
+def _normalizar_estrategias(estrategias: list | None) -> list:
+    """Devuelve la lista de estrategias asegurando que 'Nada' esté presente.
+
+    'Nada' es obligatoria porque es la referencia para calcular 'salvados'.
+    """
+    if estrategias is None:
+        estrategias = _estrategias.todas()
+    nombres = [e.nombre for e in estrategias]
+    if "Nada" not in nombres:
+        estrategias = [_estrategias.Nada()] + list(estrategias)
+    return list(estrategias)
+
+
+def correr_una_corrida(
+    params: Params,
+    indice: int,
+    estrategias: list | None = None,
+) -> dict[str, tuple[int, np.ndarray]]:
+    """Ejecuta UNA corrida (la ``indice``) para todas las estrategias.
+
+    Usa la semilla ``params.semilla + indice`` y la MISMA red para todas las
+    estrategias (comparación pareada), idéntico a :func:`comparar`. El resultado
+    de esta corrida depende SOLO de ``params`` e ``indice``: por eso se puede
+    calcular en cualquier proceso/hilo y el resultado es el mismo. Esto permite
+    paralelizar por corrida sin alterar los números.
+
+    Returns:
+        ``{nombre_estrategia: (infectados_totales, curva_zombis)}`` donde
+        ``curva_zombis`` es un array de longitud ``dias+1``.
+    """
+    estrategias = _normalizar_estrategias(estrategias)
+    semilla = params.semilla + indice
+    red = construir_red(params.poblacion, semilla)
+    salida: dict[str, tuple[int, np.ndarray]] = {}
+    for e in estrategias:
+        sim = Simulacion(params, red, e, semilla=semilla)
+        res = sim.correr()
+        salida[e.nombre] = (res.infectados_totales, res.curva[:, ZOMBI].copy())
+    return salida
+
+
+def resumir_corridas(
+    params: Params,
+    por_corrida: list[dict[str, tuple[int, np.ndarray]]],
+    estrategias: list | None = None,
+) -> dict[str, ResumenEstrategia]:
+    """Agrega los resultados de varias corridas en :class:`ResumenEstrategia`.
+
+    ``por_corrida`` debe venir EN ORDEN (corrida 0, 1, 2, ...). El orden importa
+    para que la media/percentiles sean idénticos corrida a corrida; por eso el
+    backend ordena por índice antes de llamar aquí.
+    """
+    estrategias = _normalizar_estrategias(estrategias)
+    n_corridas = len(por_corrida)
+
+    infectados = {e.nombre: np.zeros(n_corridas) for e in estrategias}
+    curvas_por_corrida = {
+        e.nombre: np.zeros((n_corridas, params.dias + 1), dtype=np.float64)
+        for e in estrategias
+    }
+    for i, corrida in enumerate(por_corrida):
+        for nombre, (inf_tot, curva) in corrida.items():
+            infectados[nombre][i] = inf_tot
+            curvas_por_corrida[nombre][i] = curva
+
+    base = infectados["Nada"]
+    resumen: dict[str, ResumenEstrategia] = {}
+    for e in estrategias:
+        inf = infectados[e.nombre]
+        salvados = base - inf
+        curvas_e = curvas_por_corrida[e.nombre]
+        resumen[e.nombre] = ResumenEstrategia(
+            nombre=e.nombre,
+            infectados_media=float(inf.mean()),
+            infectados_p10=float(np.percentile(inf, 10)),
+            infectados_p90=float(np.percentile(inf, 90)),
+            salvados_media=float(salvados.mean()),
+            salvados_p10=float(np.percentile(salvados, 10)),
+            salvados_p90=float(np.percentile(salvados, 90)),
+            curva_zombis=curvas_e.mean(axis=0),
+            curva_zombis_p10=np.percentile(curvas_e, 10, axis=0),
+            curva_zombis_p90=np.percentile(curvas_e, 90, axis=0),
+        )
+    return resumen
+
+
+def comparar_detallado(
+    params: Params,
+    estrategias: list | None = None,
+    n_corridas: int = 300,
+) -> dict[str, ResumenEstrategia]:
+    """Igual que :func:`comparar`, pero además calcula los percentiles diarios.
+
+    Diferencias con :func:`comparar`:
+
+    - Guarda la curva de zombis COMPLETA de cada corrida (no solo el acumulado),
+      para poder calcular ``curva_zombis_p10`` y ``curva_zombis_p90`` por día.
+    - La MEDIA (``curva_zombis``, ``infectados_media``, ``salvados_*``, etc.) se
+      calcula EXACTAMENTE igual que en :func:`comparar`: mismo recorrido de
+      corridas, misma semilla ``params.semilla + i`` y misma red por corrida.
+      Con la misma semilla y parámetros, los números son idénticos.
+
+    El único añadido son los percentiles diarios; los resultados existentes no
+    cambian (hay una prueba que lo verifica contra :func:`comparar`).
+    """
+    por_corrida = [
+        correr_una_corrida(params, i, estrategias) for i in range(n_corridas)
+    ]
+    return resumir_corridas(params, por_corrida, estrategias)
