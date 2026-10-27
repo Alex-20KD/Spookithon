@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BarrioMapa, CatalogoResponse } from "../../types/api";
+import type { Brote } from "../../types/brotes";
 
 // Config oficial para Vite: evita "Worker failed to load".
 maplibregl.setWorkerUrl(
@@ -60,9 +61,10 @@ interface Props {
   catalogo?: CatalogoResponse | null;
   dia?: number;
   movimientos?: { origen: string; destino: string; cantidad: number }[];
+  brotes?: Brote[];
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia, movimientos }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -104,6 +106,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos }: Pro
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
       map.addLayer({
@@ -181,6 +184,18 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos }: Pro
           "line-color": "#4DA8FF",
           "line-width": ["interpolate", ["linear"], ["get", "cantidad"], 1, 1, 20, 4],
           "line-opacity": 0.7,
+        },
+      });
+
+      map.addLayer({
+        id: "eventos",
+        type: "circle",
+        source: "eventos",
+        paint: {
+          "circle-radius": 8,
+          "circle-color": "#FF7A45",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#080D13",
         },
       });
 
@@ -306,8 +321,25 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos }: Pro
       type: "FeatureCollection",
       features: lineas as any,
     });
+
+    const eventosFeatures = (brotes ?? [])
+      .filter((b) => b.activo)
+      .map((b) => {
+        const c = (catalogo?.barrios ?? []).find((x) => x.id === b.barrio_id);
+        if (!c) return null;
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+          properties: { tipo: b.tipo, dia: b.dia },
+        };
+      })
+      .filter(Boolean);
+    (map.getSource("eventos") as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: eventosFeatures as any,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, barrios, catalogo, movimientos]);
+  }, [mapLoaded, barrios, catalogo, movimientos, brotes]);
 
   const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
     const map = mapRef.current;

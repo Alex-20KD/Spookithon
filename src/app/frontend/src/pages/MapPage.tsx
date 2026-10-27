@@ -42,6 +42,7 @@ export default function MapPage() {
     setEstrategiaSeleccionada,
     cargarTrayectoria,
     paramsModificados,
+    brotes,
   } = useSimulation();
   const [catalogo, setCatalogo] = useState<CatalogoResponse | null>(null);
   const [reproduciendo, setReproduciendo] = useState(false);
@@ -221,6 +222,7 @@ export default function MapPage() {
               catalogo={catalogo}
               dia={dia}
               movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
+              brotes={brotes}
             />
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>

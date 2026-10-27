@@ -5,6 +5,10 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Pill from "../components/ui/Pill";
 import RangeControl from "../components/ui/RangeControl";
+import BrotesEditor from "../components/BrotesEditor";
+import { obtenerCatalogo } from "../services/apiClient";
+import type { CatalogoResponse } from "../types/api";
+import { useEffect, useState } from "react";
 import type { LugarInicio } from "../types/api";
 
 /** Lugares de inicio que acepta el backend (LugarInicio). */
@@ -40,7 +44,16 @@ export default function SimulatorConfig() {
     resultado,
     viaTransmision,
     setViaTransmision,
+    brotes,
+    setBrotes,
   } = useSimulation();
+
+  const [catalogo, setCatalogo] = useState<CatalogoResponse | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    obtenerCatalogo(ctrl.signal).then(setCatalogo).catch(() => setCatalogo(null));
+    return () => ctrl.abort();
+  }, []);
 
   const rBeta = rango(meta, "beta", { min: 0.01, max: 1 });
   const rDosis = rango(meta, "dosis_dia", { min: 0, max: 1000 });
@@ -166,6 +179,8 @@ export default function SimulatorConfig() {
         </Card>
       </div>
 
+      <div style={{ height: 16 }} />
+      <BrotesEditor brotes={brotes} onChange={setBrotes} catalogo={catalogo} diasMax={meta?.topes?.dias_max ?? 100} />
       <div style={{ height: 16 }} />
       <Card title="Ejecución">
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
