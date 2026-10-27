@@ -19,6 +19,7 @@ import type {
   ParametrosResponse,
 } from "../types/api";
 import type { TrayectoriaRequest, TrayectoriaResponse } from "../types/trayectoria";
+import type { Brote } from "../types/brotes";
 
 /**
  * Parámetros editables que la interfaz envía al backend. Usan los MISMOS
@@ -56,6 +57,10 @@ interface SimulationContextValue {
   /** Vía de transmisión seleccionada. */
   viaTransmision: string;
   setViaTransmision: (v: string) => void;
+
+  /** Brotes programados. */
+  brotes: Brote[];
+  setBrotes: (b: Brote[]) => void;
   updateParam: <K extends keyof ParametrosEditables>(
     key: K,
     value: ParametrosEditables[K],
@@ -133,9 +138,23 @@ function construirDefaults(meta: ParametrosResponse | null): ParametrosEditables
   };
 }
 
+function brotesAEventos(brotes: Brote[]): CompararRequest["eventos"] {
+  return brotes
+    .filter((b) => b.activo)
+    .map((b) => ({
+      tipo: b.tipo,
+      dia: b.dia,
+      barrio_id: b.barrio_id,
+      intensidad: b.intensidad,
+      duracion: b.duracion,
+      nombre: b.tipo,
+    }));
+}
+
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [params, setParams] = useState<ParametrosEditables>(PARAMS_FALLBACK);
-  const [viaTransmision, setViaTransmision] = useState<string>("combinada");
+  const [viaTransmision, setViaTransmision] = useState<string>("mordidas");
+  const [brotes, setBrotes] = useState<Brote[]>([]);
   const [meta, setMeta] = useState<ParametrosResponse | null>(null);
   const [resultado, setResultado] = useState<CompararResponse | null>(null);
   const [eventos, setEventos] = useState<CompararRequest["eventos"]>(null);
@@ -169,6 +188,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setCargando(true);
     setError(null);
     try {
+      const ev = brotes.length > 0 ? (brotesAEventos(brotes) ?? undefined) : undefined;
       const cuerpo: TrayectoriaRequest = {
         beta: baseParams.beta,
         dosis_dia: baseParams.dosis_dia,
@@ -180,6 +200,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         semilla: baseParams.semilla,
         movilidad_zombie: 0.05,
         via_transmision: viaTransmision,
+        eventos: ev,
         estrategia: estr,
       };
       const res = await obtenerTrayectoria(cuerpo);
@@ -214,7 +235,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setCargando(true);
     setError(null);
     try {
-      const ev = eventosOverride !== undefined ? eventosOverride : eventos;
+      const ev = eventosOverride !== undefined ? eventosOverride : (brotes.length > 0 ? brotesAEventos(brotes) : eventos);
       const cuerpo: CompararRequest = { ...params, via_transmision: viaTransmision, eventos: ev };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
@@ -259,6 +280,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       params,
       viaTransmision,
       setViaTransmision,
+      brotes,
+      setBrotes,
       updateParam,
       restaurarDefaults,
       meta,
@@ -277,7 +300,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       dia,
       setDia,
     }),
-    [params, meta, resultado, eventos, viaTransmision, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
+    [params, meta, resultado, eventos, viaTransmision, brotes, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
   );
 
   return (
