@@ -53,6 +53,13 @@ def _worker_corrida(
     }
 
 
+def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int) -> dict:
+    """Ejecuta una sola corrida con registro diario por barrio."""
+    from simulador import corridas as _corridas_sim
+
+    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla)
+
+
 class Ejecutor:
     """Coordina el pool de procesos, el semáforo y la caché."""
 
@@ -118,6 +125,21 @@ class Ejecutor:
             resumen = await self._ejecutar(params, n_corridas)
             self._cache.put(clave, resumen)
             return resumen
+        finally:
+            self._en_curso -= 1
+            self._semaforo.release()
+
+    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int) -> dict:
+        """Ejecuta una corrida determinista con trayectoria diaria."""
+        if self._en_curso >= self._max_simulaciones:
+            raise ServidorOcupado()
+        await self._semaforo.acquire()
+        self._en_curso += 1
+        try:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(
+                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla
+            )
         finally:
             self._en_curso -= 1
             self._semaforo.release()
