@@ -9,6 +9,7 @@ import React, {
 import {
   compararEstrategias,
   obtenerParametros,
+  obtenerTrayectoria,
   ApiError,
 } from "../services/apiClient";
 import type {
@@ -17,6 +18,7 @@ import type {
   LugarInicio,
   ParametrosResponse,
 } from "../types/api";
+import type { TrayectoriaRequest, TrayectoriaResponse } from "../types/trayectoria";
 
 /**
  * Parámetros editables que la interfaz envía al backend. Usan los MISMOS
@@ -63,12 +65,28 @@ interface SimulationContextValue {
   /** Último resultado de POST /comparar. */
   resultado: CompararResponse | null;
 
+  /** Parámetros con los que se ejecutó la última simulación. */
+  paramsEjecutados: ParametrosEditables | null;
+
+  /** Trayectoria determinista cargada. */
+  trayectoria: TrayectoriaResponse | null;
+
+  /** Estrategia seleccionada para la trayectoria. */
+  estrategiaSeleccionada: string;
+  setEstrategiaSeleccionada: (e: string) => void;
+
+  /** Indica si los parámetros actuales difieren de los ejecutados. */
+  paramsModificados: boolean;
+
   /** Estado de la petición en curso. */
   cargando: boolean;
   error: string | null;
 
   /** Ejecuta POST /comparar con los parámetros actuales. Devuelve el resultado o null si falla. */
   comparar: () => Promise<CompararResponse | null>;
+
+  /** Carga una trayectoria determinista para la estrategia indicada. */
+  cargarTrayectoria: (estrategia?: string) => Promise<void>;
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
@@ -112,6 +130,9 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [params, setParams] = useState<ParametrosEditables>(PARAMS_FALLBACK);
   const [meta, setMeta] = useState<ParametrosResponse | null>(null);
   const [resultado, setResultado] = useState<CompararResponse | null>(null);
+  const [paramsEjecutados, setParamsEjecutados] = useState<ParametrosEditables | null>(null);
+  const [trayectoria, setTrayectoria] = useState<TrayectoriaResponse | null>(null);
+  const [estrategiaSeleccionada, setEstrategiaSeleccionada] = useState<string>("Nada");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dia, setDiaState] = useState(0);
@@ -131,6 +152,27 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const restaurarDefaults = () => {
     usuarioEdito.current = false;
     setParams(construirDefaults(meta));
+  };
+
+  const cargarTrayectoria = async (estrategia?: string) => {
+    const baseParams = paramsEjecutados ?? params;
+    const estr = estrategia ?? estrategiaSeleccionada;
+    setCargando(true);
+    setError(null);
+    try {
+      const cuerpo: TrayectoriaRequest = { ...baseParams, estrategia: estr };
+      const res = await obtenerTrayectoria(cuerpo);
+      setTrayectoria(res);
+      setEstrategiaSeleccionada(estr);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Ocurrió un error inesperado al cargar la trayectoria.",
+      );
+    } finally {
+      setCargando(false);
+    }
   };
 
   const setDia = (d: number | ((prev: number) => number)) => {
@@ -154,6 +196,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       const cuerpo: CompararRequest = { ...params };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
+      setParamsEjecutados({ ...params });
+      setTrayectoria(null);
       setDiaState(0);
       return res;
     } catch (e) {
@@ -184,6 +228,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return () => ctrl.abort();
   }, []);
 
+  const paramsModificados =
+    paramsEjecutados !== null &&
+    JSON.stringify(params) !== JSON.stringify(paramsEjecutados);
+
   const value = useMemo(
     () => ({
       params,
@@ -191,13 +239,19 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       restaurarDefaults,
       meta,
       resultado,
+      paramsEjecutados,
+      trayectoria,
+      estrategiaSeleccionada,
+      setEstrategiaSeleccionada,
+      paramsModificados,
       cargando,
       error,
       comparar,
+      cargarTrayectoria,
       dia,
       setDia,
     }),
-    [params, meta, resultado, cargando, error, dia],
+    [params, meta, resultado, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
   );
 
   return (
