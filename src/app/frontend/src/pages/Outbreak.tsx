@@ -47,7 +47,12 @@ export default function Outbreak() {
     error,
     resultado,
     meta,
+    setEventos,
   } = useSimulation();
+
+  const [tipoEvento, setTipoEvento] = useState("ninguno");
+  const [intensidadEvento, setIntensidadEvento] = useState(10);
+  const [barrioEvento, setBarrioEvento] = useState("b01");
 
   const [base, setBase] = useState<Escenario | null>(null);
   const [despues, setDespues] = useState<CompararResponse | null>(null);
@@ -66,8 +71,23 @@ export default function Outbreak() {
   const rDetect = rango(meta, "dias_detectar", { min: 1, max: 30 });
   const rPort = rango(meta, "infect_portador", { min: 0, max: 1 });
 
+  const eventoActual =
+    tipoEvento === "ninguno"
+      ? null
+      : [
+          {
+            tipo: tipoEvento,
+            dia: 4,
+            barrio_id: barrioEvento,
+            intensidad: intensidadEvento,
+            duracion: 5,
+            nombre: tipoEvento,
+          },
+        ];
+
   const establecerBase = async () => {
-    const res = await comparar();
+    setEventos(null);
+    const res = await comparar(null);
     if (res) setBase({ params: { ...params }, resultado: res });
     setDespues(null);
   };
@@ -77,7 +97,8 @@ export default function Outbreak() {
       await establecerBase();
       return;
     }
-    const res = await comparar();
+    setEventos(eventoActual);
+    const res = await comparar(eventoActual);
     if (res) setDespues(res);
   };
 
@@ -156,6 +177,42 @@ export default function Outbreak() {
               ))}
             </select>
           </div>
+
+          <div className="range-control">
+            <label>
+              <span>Evento Brote Sorpresa</span>
+            </label>
+            <select value={tipoEvento} onChange={(e) => setTipoEvento(e.target.value)} style={selectStyle}>
+              <option value="ninguno">Ninguno</option>
+              <option value="brote_secundario">Brote secundario</option>
+              <option value="zombie_corredor">Zombie corredor</option>
+              <option value="fallo_contencion">Fallo de contención</option>
+            </select>
+          </div>
+
+          {tipoEvento !== "ninguno" && (
+            <>
+              <RangeControl
+                label="Intensidad"
+                value={intensidadEvento}
+                min={1}
+                max={50}
+                step={1}
+                onChange={setIntensidadEvento}
+              />
+              <div className="range-control">
+                <label>
+                  <span>Barrio del evento</span>
+                </label>
+                <input
+                  type="text"
+                  value={barrioEvento}
+                  onChange={(e) => setBarrioEvento(e.target.value)}
+                  style={selectStyle}
+                />
+              </div>
+            </>
+          )}
         </Card>
 
         <Card title="Ejecución">

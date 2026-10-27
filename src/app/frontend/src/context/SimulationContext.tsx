@@ -65,6 +65,10 @@ interface SimulationContextValue {
   /** Último resultado de POST /comparar. */
   resultado: CompararResponse | null;
 
+  /** Eventos de brote sorpresa activos. */
+  eventos: CompararRequest["eventos"];
+  setEventos: (e: CompararRequest["eventos"]) => void;
+
   /** Parámetros con los que se ejecutó la última simulación. */
   paramsEjecutados: ParametrosEditables | null;
 
@@ -83,7 +87,7 @@ interface SimulationContextValue {
   error: string | null;
 
   /** Ejecuta POST /comparar con los parámetros actuales. Devuelve el resultado o null si falla. */
-  comparar: () => Promise<CompararResponse | null>;
+  comparar: (eventosOverride?: CompararRequest["eventos"]) => Promise<CompararResponse | null>;
 
   /** Carga una trayectoria determinista para la estrategia indicada. */
   cargarTrayectoria: (estrategia?: string) => Promise<void>;
@@ -130,6 +134,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const [params, setParams] = useState<ParametrosEditables>(PARAMS_FALLBACK);
   const [meta, setMeta] = useState<ParametrosResponse | null>(null);
   const [resultado, setResultado] = useState<CompararResponse | null>(null);
+  const [eventos, setEventos] = useState<CompararRequest["eventos"]>(null);
   const [paramsEjecutados, setParamsEjecutados] = useState<ParametrosEditables | null>(null);
   const [trayectoria, setTrayectoria] = useState<TrayectoriaResponse | null>(null);
   const [estrategiaSeleccionada, setEstrategiaSeleccionada] = useState<string>("Nada");
@@ -195,7 +200,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const comparar = async (): Promise<CompararResponse | null> => {
+  const comparar = async (eventosOverride?: CompararRequest["eventos"]): Promise<CompararResponse | null> => {
     // Cancela una comparación anterior aún en vuelo.
     comparaEnCurso.current?.abort();
     const ctrl = new AbortController();
@@ -204,7 +209,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setCargando(true);
     setError(null);
     try {
-      const cuerpo: CompararRequest = { ...params };
+      const ev = eventosOverride !== undefined ? eventosOverride : eventos;
+      const cuerpo: CompararRequest = { ...params, eventos: ev };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
       setParamsEjecutados({ ...params });
@@ -250,6 +256,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       restaurarDefaults,
       meta,
       resultado,
+      eventos,
+      setEventos,
       paramsEjecutados,
       trayectoria,
       estrategiaSeleccionada,
@@ -262,7 +270,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       dia,
       setDia,
     }),
-    [params, meta, resultado, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
+    [params, meta, resultado, eventos, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
   );
 
   return (

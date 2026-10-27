@@ -83,7 +83,7 @@ def comparar(
         # MISMA red para todas las estrategias de esta corrida.
         red = construir_red(params.poblacion, semilla)
         for e in estrategias:
-            sim = Simulacion(params, red, e, semilla=semilla)
+            sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos)
             res = sim.correr()
             infectados[e.nombre][i] = res.infectados_totales
             curvas[e.nombre] += res.curva[:, ZOMBI]
@@ -125,6 +125,7 @@ def correr_una_corrida(
     params: Params,
     indice: int,
     estrategias: list | None = None,
+    eventos: list | None = None,
 ) -> dict[str, tuple[int, np.ndarray, np.ndarray]]:
     """Ejecuta UNA corrida (la ``indice``) para todas las estrategias.
 
@@ -144,7 +145,7 @@ def correr_una_corrida(
     red = construir_red(params.poblacion, semilla)
     salida: dict[str, tuple[int, np.ndarray, np.ndarray]] = {}
     for e in estrategias:
-        sim = Simulacion(params, red, e, semilla=semilla)
+        sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos)
         res = sim.correr()
         salida[e.nombre] = (
             res.infectados_totales,

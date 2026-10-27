@@ -174,7 +174,7 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
             )
 
         params = _construir_params(entrada)
-        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas)
+        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas, entrada.eventos)
         return _armar_respuesta(resumen, params, entrada.n_corridas, cfg)
 
     @app.post("/trayectoria")

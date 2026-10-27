@@ -79,6 +79,10 @@ class ParametrosComparar(BaseModel):
         default=50, ge=1,
         description="Número de corridas a promediar (tope configurable, 300 por defecto).",
     )
+    eventos: list[dict] | None = Field(
+        default=None,
+        description="Eventos de brote sorpresa opcionales.",
+    )
 
 
 # ----------------------------- Respuestas ------------------------------ #
