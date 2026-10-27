@@ -184,7 +184,7 @@ export default function SimulatorConfig() {
       <div style={{ height: 16 }} />
       <Card title="Ejecución">
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <Button variant="primary" onClick={comparar} disabled={cargando}>
+          <Button variant="primary" onClick={() => comparar()} disabled={cargando}>
             {cargando ? "Simulando…" : "Comparar estrategias"}
           </Button>
           <Button onClick={restaurarDefaults} disabled={cargando}>
