@@ -53,7 +53,10 @@ class Params:
 
     # --- Población y horizonte ---
     poblacion: int = 3000  # supuesto de diseño (tamaño manejable para el demo)
-    dias: int = 30  # supuesto de diseño (horizonte del escenario)
+    dias: int = 60  # horizonte justificado por el % infectado SIN intervención
+    # a 30/45/60 días (≈4,3% / 24,1% / 63,8% en 'Nada'): a 30 días la epidemia
+    # apenas arranca y a 60 ya hay saturación, por eso 60 da margen para que las
+    # estrategias marquen diferencia (ver data/calibracion.json).
 
     # --- Siembra inicial ---
     casos_extra: int = 3  # supuesto de diseño (paciente cero + 3)
@@ -66,7 +69,10 @@ class Params:
     infect_portador: float = 0.30  # supuesto de diseño (infectividad relativa del portador vs zombi=1.0)
 
     # --- Transmisión ---
-    beta: float = 0.10  # PROVISIONAL, se calibrará después (supuesto de diseño)
+    # beta CALIBRADO para R0≈2,5 (media) con la definición de ventana fija V=14
+    # días. Procedimiento y métricas en src/simulador/data/calibracion.json
+    # (ver también scripts/calibrar_beta.py y src/simulador/r0.py).
+    beta: float = 0.015625
 
     # --- Intervenciones ---
     dia_medidas: int = 4  # supuesto de diseño (día en que empiezan las medidas)

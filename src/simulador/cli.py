@@ -23,7 +23,7 @@ def _construir_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--corridas", type=int, default=300, help="número de corridas pareadas")
     p.add_argument("--semilla", type=int, default=42, help="semilla base")
-    p.add_argument("--beta", type=float, default=None, help="tasa de transmisión (PROVISIONAL)")
+    p.add_argument("--beta", type=float, default=None, help="tasa de transmisión (calibrada a R0≈2,5)")
     p.add_argument("--dosis", type=int, default=None, help="dosis por día")
     p.add_argument("--eficacia", type=float, default=None, help="eficacia de la vacuna (0..1)")
     p.add_argument(
@@ -51,7 +51,12 @@ def _params_desde_args(args: argparse.Namespace) -> Params:
 
 def _imprimir_tabla(resumen: dict, n_corridas: int) -> None:
     print(f"\nResultados sobre {n_corridas} corridas (comparación pareada)")
-    print("Nota: simulación FICTICIA. beta es PROVISIONAL (sin calibrar).\n")
+    print(
+        "Nota: simulación FICTICIA. beta está calibrado para R0≈2,5 "
+        "(infecciones directas de 1 caso índice en una ventana de 14 días,\n"
+        "población 100% susceptible y sin intervenciones). Ver "
+        "src/simulador/data/calibracion.json.\n"
+    )
 
     enc = f"{'Estrategia':<22} {'Infectados (p10-p90)':<28} {'Salvados (p10-p90)':<28}"
     print(enc)
