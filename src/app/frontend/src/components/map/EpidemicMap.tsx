@@ -51,9 +51,10 @@ function colorRiesgo(ratio: number): string {
 interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
+  dia?: number;
 }
 
-export default function EpidemicMap({ barrios, catalogo }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -79,6 +80,8 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
         style: getStyle() as maplibregl.StyleSpecification | string,
         center: centro,
         zoom: 12.4,
+        pitch: 45,
+        bearing: -15,
       });
     } catch {
       setMapError(true);
@@ -91,6 +94,27 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
     map.on("load", () => {
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+
+      // Heatmap de contagios (agregado por barrio).
+      map.addLayer({
+        id: "barrios-heat",
+        type: "heatmap",
+        source: "barrios",
+        paint: {
+          "heatmap-weight": ["interpolate", ["linear"], ["get", "ratio"], 0, 0, 1, 1],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 14, 3],
+          "heatmap-color": [
+            "interpolate", ["linear"], ["heatmap-density"],
+            0, "rgba(0,0,0,0)",
+            0.2, "#38E89A",
+            0.4, "#FF7A45",
+            0.6, "#FF4D5A",
+            1, "#8B1E2D",
+          ],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 40],
+          "heatmap-opacity": 0.55,
+        },
+      });
 
       // Halo de barrio (tamaño/color por riesgo).
       map.addLayer({
@@ -123,11 +147,18 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
         type: "circle",
         source: "edificios",
         paint: {
-          "circle-radius": 4,
-          "circle-color": "#4DA8FF",
+          "circle-radius": 5,
+          "circle-color": [
+            "match", ["get", "tipo"],
+            "hospital", "#FF4D5A",
+            "mercado", "#FF7A45",
+            "colegio", "#4DA8FF",
+            "bus", "#38E89A",
+            "#4DA8FF",
+          ],
           "circle-stroke-width": 1,
           "circle-stroke-color": "#0C141D",
-          "circle-opacity": 0.9,
+          "circle-opacity": 0.95,
         },
       });
 
@@ -152,6 +183,26 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
         popupRef.current?.remove();
         popupRef.current = null;
       });
+
+      // Edificios 3D ilustrativos (si el estilo ofrece geometrías compatibles).
+      try {
+        if (map.getSource("openmaptiles")) {
+          map.addLayer({
+            id: "edificios-3d",
+            type: "fill-extrusion",
+            source: "openmaptiles",
+            "source-layer": "building",
+            paint: {
+              "fill-extrusion-color": "#16222E",
+              "fill-extrusion-height": ["coalesce", ["get", "height"], 8],
+              "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
+              "fill-extrusion-opacity": 0.5,
+            },
+          });
+        }
+      } catch {
+        // El proveedor puede no ofrecer geometrías compatibles; se ignora.
+      }
 
       setMapLoaded(true);
     });
@@ -206,6 +257,18 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapLoaded, barrios, catalogo]);
 
+  const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ pitch, bearing, ...(zoom != null ? { zoom } : {}), duration: 900 });
+  };
+
+  const centrarManta = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 45, bearing: -15, duration: 1200 });
+  };
+
   return (
     <div>
       {mapError && (
@@ -214,7 +277,48 @@ export default function EpidemicMap({ barrios, catalogo }: Props) {
           <code> VITE_MAP_STYLE_URL</code> / <code>VITE_MAPTILER_KEY</code>.
         </div>
       )}
-      <div ref={containerRef} className="map-container" style={{ height: 520 }} />
+      <div style={{ position: "relative" }}>
+        <div ref={containerRef} className="map-container" style={{ height: 520 }} />
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            zIndex: 5,
+          }}
+        >
+          <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => moverCamara(0, 0)}>
+            Vista superior
+          </button>
+          <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => moverCamara(60, -20)}>
+            Vista 3D
+          </button>
+          <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={centrarManta}>
+            Centrar Manta
+          </button>
+        </div>
+        {dia != null && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 10,
+              left: 10,
+              background: "rgba(8,13,19,0.7)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: "4px 8px",
+              fontSize: 12,
+              color: "var(--muted)",
+              zIndex: 5,
+            }}
+          >
+            Día ilustrativo: {dia}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

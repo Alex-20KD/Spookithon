@@ -18,8 +18,23 @@ const NIVELES: { color: string; etiqueta: string }[] = [
 ];
 
 export default function MapPage() {
-  const { resultado, cargando, error } = useSimulation();
+  const { resultado, cargando, error, dia, setDia, params } = useSimulation();
   const [catalogo, setCatalogo] = useState<CatalogoResponse | null>(null);
+  const [reproduciendo, setReproduciendo] = useState(false);
+  const [velocidad, setVelocidad] = useState(1);
+
+  useEffect(() => {
+    if (!reproduciendo) return;
+    const id = setInterval(() => {
+      if (dia >= params.dias) {
+        setReproduciendo(false);
+        setDia(0);
+      } else {
+        setDia(dia + 1);
+      }
+    }, 1000 / velocidad);
+    return () => clearInterval(id);
+  }, [reproduciendo, dia, velocidad, params.dias, setDia]);
 
   // El catálogo es geografía fija; se carga una vez para los edificios de
   // referencia. Si falla, el mapa igual funciona con los barrios del resultado.
@@ -93,7 +108,12 @@ export default function MapPage() {
       {cabecera}
       <div className="split">
         <div>
-          <EpidemicMap barrios={mapa.barrios} catalogo={catalogo} />
+          <EpidemicMap barrios={mapa.barrios} catalogo={catalogo} dia={dia} />
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+            La reproducción por día es una <strong>demostración ilustrativa</strong>: la API
+            no devuelve series geográficas por día, por lo que el mapa agregado no cambia
+            con el día.
+          </div>
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
             Coordenadas del catálogo (ficticias). El tamaño y color de cada
             barrio reflejan los infectados medios de la estrategia{" "}
@@ -102,6 +122,36 @@ export default function MapPage() {
         </div>
 
         <div className="map-side">
+          <Card title="Controles de reproducción">
+            <div className="sim-controls">
+              <button className="btn primary" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setReproduciendo((v) => !v)}>
+                {reproduciendo ? "Pausar" : "Reproducir"}
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.min(params.dias, dia + 1))}>
+                Avanzar día
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setReproduciendo(false); setDia(0); }}>
+                Reiniciar
+              </button>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
+              Día actual: {dia} / {params.dias}
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Velocidad</span>
+                <span className="val">{velocidad.toFixed(1)}x</span>
+              </label>
+              <input
+                type="range"
+                min={0.5}
+                max={4}
+                step={0.5}
+                value={velocidad}
+                onChange={(e) => setVelocidad(Number(e.target.value))}
+              />
+            </div>
+          </Card>
           <Card title="Nivel de riesgo">
             <div className="legend">
               {NIVELES.map((n) => (
