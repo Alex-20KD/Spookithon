@@ -53,6 +53,9 @@ class Resultado:
     dosis_usadas: int
     dias_cierre: int
     infectados_por_barrio: np.ndarray
+    # Trayectoria diaria (solo si registrar_trayectoria=True). Lista de dicts
+    # con conteos globales y por barrio por día. None si no se registró.
+    trayectoria: list | None = None
 
 
 class Simulacion:
@@ -65,6 +68,7 @@ class Simulacion:
         estrategia,
         semilla: int | None = None,
         atribuir: bool = False,
+        registrar_trayectoria: bool = False,
     ):
         self.params = params
         self.red = red
@@ -74,6 +78,8 @@ class Simulacion:
         # resultados que antes porque no se consumen números aleatorios nuevos
         # ni se altera ninguna decisión.
         self.atribuir = atribuir
+        self.registrar_trayectoria = registrar_trayectoria
+        self.trayectoria: list | None = [] if registrar_trayectoria else None
         # infecciones_causadas[j] = nº (fraccional) de infecciones directas que
         # causó la persona j. Solo se llena si atribuir=True.
         self.infecciones_causadas = np.zeros(red.n_personas, dtype=np.float64)
@@ -112,6 +118,15 @@ class Simulacion:
         self.dias_cierre = 0
         self.curva = np.zeros((params.dias + 1, N_ESTADOS), dtype=np.int64)
 
+        # Mapeo persona -> posición de barrio (para conteos espaciales).
+        n_barrios = len(red.barrios_ids)
+        self._n_barrios = n_barrios
+        self._pos_barrio = np.zeros(red.n_personas, dtype=np.int64)
+        for pos, lugar_idx in enumerate(red.barrios_lugar_idx):
+            self._pos_barrio[red.barrio_persona == lugar_idx] = pos
+        self._ids_barrio = list(red.barrios_ids)
+        self._dosis_prev = 0
+
         self._sembrar()
 
     # ------------------------------------------------------------------ #
@@ -140,6 +155,8 @@ class Simulacion:
             sembrados = self.rng.choice(candidatos, size=n_sembrar, replace=False)
 
         self._infectar(sembrados, dia=0)
+        if self.registrar_trayectoria:
+            self._registrar_trayectoria(0, np.asarray(sembrados, dtype=np.int64))
         self._registrar_curva(0)
 
     def _infectar(self, personas: np.ndarray, dia: int) -> None:
@@ -153,6 +170,64 @@ class Simulacion:
         self.tiempo_conversion[personas] = self.rng.integers(
             self.params.incub_min, self.params.incub_max + 1, size=personas.size
         )
+
+    def _registrar_trayectoria(self, dia: int, nuevos: np.ndarray) -> None:
+        if not self.registrar_trayectoria or self.trayectoria is None:
+            return
+        red = self.red
+        estado = self.estado
+        nuevos = np.asarray(nuevos, dtype=np.int64).ravel()
+
+        # Conteos globales por estado.
+        conteo_global = np.bincount(estado, minlength=N_ESTADOS)
+        nombres = NOMBRES_ESTADO
+        global_dict = {nombres[i]: int(conteo_global[i]) for i in range(N_ESTADOS)}
+        global_dict["nuevos_contagios"] = int(nuevos.size)
+        dosis_hoy = int(self.dosis_usadas - self._dosis_prev)
+        global_dict["dosis_dia"] = dosis_hoy
+        global_dict["lugares_cerrados"] = int(self.cerrado.sum())
+
+        # Conteos por barrio.
+        pos_nuevos = self._pos_barrio[nuevos] if nuevos.size else np.array([], dtype=np.int64)
+        nuevos_por_barrio = np.bincount(pos_nuevos, minlength=self._n_barrios)
+        pos_zombis = self._pos_barrio[estado == ZOMBI]
+        zombis_por_barrio = np.bincount(pos_zombis, minlength=self._n_barrios)
+        pos_infectados = self._pos_barrio[self.fue_infectado]
+        acum_por_barrio = np.bincount(pos_infectados, minlength=self._n_barrios)
+        pos_inmunes = self._pos_barrio[estado == INMUNE]
+        inmunes_por_barrio = np.bincount(pos_inmunes, minlength=self._n_barrios)
+
+        por_barrio = []
+        for i, bid in enumerate(self._ids_barrio):
+            por_barrio.append({
+                "barrio_id": bid,
+                "zombis_activos": int(zombis_por_barrio[i]),
+                "infectados_acumulados": int(acum_por_barrio[i]),
+                "nuevos_contagios": int(nuevos_por_barrio[i]),
+                "inmunes": int(inmunes_por_barrio[i]),
+            })
+
+        eventos = []
+        if dia == 0:
+            eventos.append({"dia": 0, "tipo": "escenario", "titulo": "Paciente cero infectado"})
+        if dia == self.params.dia_medidas:
+            eventos.append({"dia": dia, "tipo": "medidas", "titulo": "Activación del protocolo epidemiológico"})
+        if dia == self.params.dia_vacuna:
+            eventos.append({"dia": dia, "tipo": "vacuna", "titulo": "Disponibilidad inicial de vacunas"})
+        if nuevos.size > 0:
+            eventos.append({"dia": dia, "tipo": "contagio", "titulo": "Nuevos contagios", "cantidad": int(nuevos.size)})
+        if dosis_hoy > 0:
+            eventos.append({"dia": dia, "tipo": "vacunacion", "titulo": "Vacunación", "dosis": dosis_hoy})
+        if int(self.cerrado.sum()) > 0:
+            eventos.append({"dia": dia, "tipo": "cierre", "titulo": "Cierres aplicados", "lugares": int(self.cerrado.sum())})
+
+        self.trayectoria.append({
+            "dia": int(dia),
+            "estrategia": self.estrategia.nombre,
+            "global": global_dict,
+            "por_barrio": por_barrio,
+            "eventos": eventos,
+        })
 
     # ------------------------------------------------------------------ #
     # Dinámica diaria
@@ -180,6 +255,10 @@ class Simulacion:
             # (f) registro de la curva
             self._registrar_curva(dia)
 
+            if self.registrar_trayectoria:
+                self._registrar_trayectoria(dia, nuevos)
+                self._dosis_prev = self.dosis_usadas
+
         infectados_totales = int(self.fue_infectado.sum())
         return Resultado(
             infectados_totales=infectados_totales,
@@ -187,6 +266,7 @@ class Simulacion:
             dosis_usadas=self.dosis_usadas,
             dias_cierre=self.dias_cierre,
             infectados_por_barrio=self._infectados_por_barrio(),
+            trayectoria=self.trayectoria,
         )
 
     # ------------------------------------------------------------------ #

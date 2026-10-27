@@ -224,6 +224,52 @@ def resumir_corridas(
     return resumen
 
 
+def _estrategia_por_nombre(nombre: str):
+    mapping = {
+        "Nada": _estrategias.Nada,
+        "Azar": _estrategias.Azar,
+        "Centralidad": _estrategias.Centralidad,
+        "CierresMasCentralidad": _estrategias.CierresMasCentralidad,
+        "Anillo": _estrategias.Anillo,
+    }
+    if nombre not in mapping:
+        raise ValueError(f"Estrategia desconocida: {nombre}")
+    return mapping[nombre]()
+
+
+def correr_trayectoria(
+    params: Params,
+    estrategia_nombre: str,
+    semilla: int | None = None,
+) -> dict:
+    """Ejecuta UNA corrida determinista con registro diario por barrio.
+
+    Devuelve un diccionario serializable con la trayectoria completa.
+    No altera la dinámica ni los resultados agregados.
+    """
+    base = params.semilla if semilla is None else semilla
+    red = construir_red(params.poblacion, base)
+    estrategia = _estrategia_por_nombre(estrategia_nombre)
+    sim = Simulacion(
+        params, red, estrategia, semilla=base, registrar_trayectoria=True
+    )
+    res = sim.correr()
+    return {
+        "estrategia": estrategia_nombre,
+        "semilla": base,
+        "dias": params.dias,
+        "trayectoria": res.trayectoria,
+        "infectados_totales": res.infectados_totales,
+        "dosis_usadas": res.dosis_usadas,
+        "dias_cierre": res.dias_cierre,
+        "infectados_por_barrio": (
+            res.infectados_por_barrio.tolist()
+            if res.infectados_por_barrio is not None
+            else None
+        ),
+    }
+
+
 def comparar_detallado(
     params: Params,
     estrategias: list | None = None,
