@@ -160,7 +160,17 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setCargando(true);
     setError(null);
     try {
-      const cuerpo: TrayectoriaRequest = { ...baseParams, estrategia: estr };
+      const cuerpo: TrayectoriaRequest = {
+        beta: baseParams.beta,
+        dosis_dia: baseParams.dosis_dia,
+        eficacia_vacuna: baseParams.eficacia_vacuna,
+        lugar_inicio: baseParams.lugar_inicio,
+        dias_detectar: baseParams.dias_detectar,
+        infect_portador: baseParams.infect_portador,
+        dias: baseParams.dias,
+        semilla: baseParams.semilla,
+        estrategia: estr,
+      };
       const res = await obtenerTrayectoria(cuerpo);
       setTrayectoria(res);
       setEstrategiaSeleccionada(estr);
