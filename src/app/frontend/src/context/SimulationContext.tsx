@@ -53,6 +53,9 @@ const PARAMS_FALLBACK: ParametrosEditables = {
 interface SimulationContextValue {
   /** Parámetros actuales del formulario. */
   params: ParametrosEditables;
+  /** Vía de transmisión seleccionada. */
+  viaTransmision: string;
+  setViaTransmision: (v: string) => void;
   updateParam: <K extends keyof ParametrosEditables>(
     key: K,
     value: ParametrosEditables[K],
@@ -132,6 +135,7 @@ function construirDefaults(meta: ParametrosResponse | null): ParametrosEditables
 
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [params, setParams] = useState<ParametrosEditables>(PARAMS_FALLBACK);
+  const [viaTransmision, setViaTransmision] = useState<string>("combinada");
   const [meta, setMeta] = useState<ParametrosResponse | null>(null);
   const [resultado, setResultado] = useState<CompararResponse | null>(null);
   const [eventos, setEventos] = useState<CompararRequest["eventos"]>(null);
@@ -175,6 +179,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         dias: baseParams.dias,
         semilla: baseParams.semilla,
         movilidad_zombie: 0.05,
+        via_transmision: viaTransmision,
         estrategia: estr,
       };
       const res = await obtenerTrayectoria(cuerpo);
@@ -210,7 +215,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setError(null);
     try {
       const ev = eventosOverride !== undefined ? eventosOverride : eventos;
-      const cuerpo: CompararRequest = { ...params, eventos: ev };
+      const cuerpo: CompararRequest = { ...params, via_transmision: viaTransmision, eventos: ev };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
       setParamsEjecutados({ ...params });
@@ -252,6 +257,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo(
     () => ({
       params,
+      viaTransmision,
+      setViaTransmision,
       updateParam,
       restaurarDefaults,
       meta,
@@ -270,7 +277,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       dia,
       setDia,
     }),
-    [params, meta, resultado, eventos, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
+    [params, meta, resultado, eventos, viaTransmision, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
   );
 
   return (

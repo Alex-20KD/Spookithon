@@ -79,6 +79,8 @@ class ParametrosComparar(BaseModel):
         default=50, ge=1,
         description="Número de corridas a promediar (tope configurable, 300 por defecto).",
     )
+    via_transmision: str | None = Field(default=None, description="mordidas, esporas o combinada")
+    beta_espora: float | None = Field(default=None, ge=0.0, le=1.0)
     eventos: list[dict] | None = Field(
         default=None,
         description="Eventos de brote sorpresa opcionales.",
@@ -186,4 +188,6 @@ class ParametrosTrayectoria(BaseModel):
         description="Estrategia a simular en la trayectoria.",
     )
     movilidad_zombie: float | None = Field(default=None, ge=0.0, le=1.0)
+    via_transmision: str | None = Field(default=None, description="mordidas, esporas o combinada")
+    beta_espora: float | None = Field(default=None, ge=0.0, le=1.0)
     eventos: list[dict] | None = Field(default=None, description="Eventos de brote sorpresa.")

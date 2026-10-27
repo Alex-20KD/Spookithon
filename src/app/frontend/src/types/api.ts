@@ -18,6 +18,8 @@ export interface CompararRequest {
   dias?: number;
   semilla?: number;
   n_corridas: number;
+  via_transmision?: string;
+  beta_espora?: number;
   eventos?: { tipo: string; dia: number; barrio_id?: string; intensidad?: number; duracion?: number; nombre?: string }[] | null;
 }
 

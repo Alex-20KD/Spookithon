@@ -38,6 +38,8 @@ export default function SimulatorConfig() {
     error,
     meta,
     resultado,
+    viaTransmision,
+    setViaTransmision,
   } = useSimulation();
 
   const rBeta = rango(meta, "beta", { min: 0.01, max: 1 });
@@ -84,6 +86,16 @@ export default function SimulatorConfig() {
             step={1}
             onChange={(v) => updateParam("dias_detectar", v)}
           />
+          <div className="range-control">
+            <label>
+              <span>Vía de transmisión</span>
+            </label>
+            <select value={viaTransmision} onChange={(e) => setViaTransmision(e.target.value)} style={selectStyle}>
+              <option value="mordidas">Mordidas</option>
+              <option value="esporas">Esporas</option>
+              <option value="combinada">Combinada</option>
+            </select>
+          </div>
           <div className="range-control">
             <label>
               <span>Lugar de inicio del brote</span>

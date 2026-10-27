@@ -485,7 +485,10 @@ class Simulacion:
 
         denom = np.sqrt(np.maximum(presentes_lugar, 1.0))
         peso_lugar = self._peso_lugar_tipo[self.red.tipo_lugar]
-        lambda_lugar = self.params.beta * peso_lugar * carga_lugar / denom
+        via = getattr(self.params, "via_transmision", "combinada")
+        beta_mordida = self.params.beta if via in ("mordidas", "combinada") else 0.0
+        beta_espora = getattr(self.params, "beta_espora", self.params.beta) if via in ("esporas", "combinada") else 0.0
+        lambda_lugar = (beta_mordida + beta_espora) * peso_lugar * carga_lugar / denom
 
         # Suma de lambdas por persona (solo aristas presentes).
         lambda_persona = np.bincount(

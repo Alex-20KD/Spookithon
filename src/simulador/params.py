@@ -74,6 +74,10 @@ class Params:
     # (ver también scripts/calibrar_beta.py y src/simulador/r0.py).
     beta: float = 0.015625
 
+    # Vía de transmisión: "mordidas", "esporas" o "combinada".
+    via_transmision: str = "combinada"
+    beta_espora: float = 0.015625
+
     # --- Movilidad zombie ---
     movilidad_zombie: float = 0.05  # prob. diaria de que un zombi se desplace a un barrio vecino
     # --- Intervenciones ---

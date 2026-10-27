@@ -204,7 +204,7 @@ def _construir_params(entrada: ParametrosComparar) -> Params:
     for campo in (
         "beta", "dosis_dia", "eficacia_vacuna", "lugar_inicio",
         "dias_detectar", "infect_portador", "dias", "semilla",
-        "movilidad_zombie",
+        "movilidad_zombie", "via_transmision", "beta_espora",
     ):
         if not hasattr(entrada, campo):
             continue
