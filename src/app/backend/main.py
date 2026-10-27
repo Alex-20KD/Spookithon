@@ -233,6 +233,7 @@ def _armar_respuesta(resumen: dict, params: Params, n_corridas: int, cfg) -> dic
             "salvados_p90": e["salvados_p90"],
             "pct_mejor_que_azar": e["pct_mejor_que_azar"],
             "pct_mejor_que_nada": e["pct_mejor_que_nada"],
+            "infectados_por_barrio": e.get("infectados_por_barrio"),
             "curva_diaria": {
                 "dias": list(range(dias + 1)),
                 "media": e["curva_media"],
@@ -249,6 +250,39 @@ def _armar_respuesta(resumen: dict, params: Params, n_corridas: int, cfg) -> dic
         "parametros_efectivos": asdict(params),
         "semilla": params.semilla,
         "n_corridas": n_corridas,
+        "mapa": _armar_mapa(mejor, cfg),
+    }
+
+
+def _armar_mapa(mejor: dict, cfg) -> dict:
+    """Construye el bloque de mapa: geografía de barrios + infectados por barrio.
+
+    Combina las coordenadas del catálogo (barrios con lat/lng) con los
+    infectados medios por barrio de la MEJOR estrategia. El frontend usa esto
+    para pintar el mapa con datos reales en vez de datos de prueba.
+    """
+    cat = cargar_catalogo()
+    barrios_cat = {b["id"]: b for b in cat["barrios"]}
+
+    ids = mejor.get("barrios") or []
+    por_barrio = mejor.get("infectados_por_barrio") or []
+
+    barrios = []
+    for i, bid in enumerate(ids):
+        base = barrios_cat.get(bid, {})
+        infectados = por_barrio[i] if i < len(por_barrio) else None
+        barrios.append({
+            "id": bid,
+            "nombre": base.get("nombre", bid),
+            "lat": base.get("lat"),
+            "lng": base.get("lng"),
+            "infectados_media": infectados,
+        })
+
+    return {
+        "aviso": cfg.aviso_simulado,
+        "estrategia": mejor["nombre"],
+        "barrios": barrios,
     }
 
 

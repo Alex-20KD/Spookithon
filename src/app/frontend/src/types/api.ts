@@ -39,7 +39,25 @@ export interface ResultadoEstrategia {
   salvados_p90: number;
   pct_mejor_que_azar: number;
   pct_mejor_que_nada: number;
+  /** Infectados medios por barrio (orden de `mapa.barrios`). */
+  infectados_por_barrio: number[] | null;
   curva_diaria: CurvaDiaria;
+}
+
+/** Un barrio del mapa: geografía + infectados medios de la mejor estrategia. */
+export interface BarrioMapa {
+  id: string;
+  nombre: string;
+  lat: number | null;
+  lng: number | null;
+  infectados_media: number | null;
+}
+
+/** Bloque de mapa de POST /comparar. */
+export interface Mapa {
+  aviso: string;
+  estrategia: string;
+  barrios: BarrioMapa[];
 }
 
 /** Respuesta completa de POST /comparar. */
@@ -51,6 +69,7 @@ export interface CompararResponse {
   parametros_efectivos: Record<string, unknown>;
   semilla: number;
   n_corridas: number;
+  mapa: Mapa;
 }
 
 /** Descripción de un parámetro editable (GET /parametros). */
@@ -70,4 +89,29 @@ export interface ParametrosResponse {
     n_corridas_max: number;
     dias_max: number;
   };
+}
+
+/** Barrio del catálogo (GET /catalogo). */
+export interface BarrioCatalogo {
+  id: string;
+  nombre: string;
+  lat: number;
+  lng: number;
+}
+
+/** Edificio del catálogo (GET /catalogo). */
+export interface EdificioCatalogo {
+  id: string;
+  nombre: string;
+  tipo: string;
+  barrio_id: string;
+  lat: number;
+  lng: number;
+}
+
+/** Respuesta de GET /catalogo: geografía ficticia (barrios y edificios). */
+export interface CatalogoResponse {
+  aviso: string;
+  barrios: BarrioCatalogo[];
+  edificios: EdificioCatalogo[];
 }

@@ -10,6 +10,7 @@
  */
 
 import type {
+  CatalogoResponse,
   CompararRequest,
   CompararResponse,
   ParametrosResponse,
@@ -102,6 +103,11 @@ async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
 /** GET /parametros — valores por defecto, rangos y topes. */
 export function obtenerParametros(signal?: AbortSignal): Promise<ParametrosResponse> {
   return pedir<ParametrosResponse>("/parametros", { method: "GET", signal });
+}
+
+/** GET /catalogo — geografía ficticia (barrios y edificios con coordenadas). */
+export function obtenerCatalogo(signal?: AbortSignal): Promise<CatalogoResponse> {
+  return pedir<CatalogoResponse>("/catalogo", { method: "GET", signal });
 }
 
 /** POST /comparar — compara las 5 estrategias y devuelve métricas + curvas. */
