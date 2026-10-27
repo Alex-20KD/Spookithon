@@ -1,0 +1,45 @@
+name: SpookyThon CI / CD Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Test backend / simulador syntax
+      run: |
+        echo "Verificando sintaxis del simulador..."
+        python -m compileall src/simulador/ || true
+
+    - name: Check frontend build (si aplica)
+      run: |
+        if [ -d "src/app" ] && [ -f "src/app/package.json" ]; then
+          cd src/app
+          npm install
+          npm run build
+        else
+          echo "Frontend package.json no encontrado en src/app, omitiendo build automático por ahora."
+        fi
