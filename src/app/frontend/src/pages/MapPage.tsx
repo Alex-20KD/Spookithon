@@ -47,6 +47,7 @@ export default function MapPage() {
   const [reproduciendo, setReproduciendo] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
   const [cargandoTray, setCargandoTray] = useState(false);
+  const cargaIniciadaRef = useRef(false);
 
   const timerRef = useRef<number | null>(null);
 
@@ -85,11 +86,13 @@ export default function MapPage() {
 
   // Cargar trayectoria inicial cuando hay simulación y no hay trayectoria.
   useEffect(() => {
-    if (resultado && !trayectoria && !cargandoTray && paramsEjecutados) {
+    if (resultado && !trayectoria && !cargandoTray && paramsEjecutados && !cargaIniciadaRef.current) {
+      cargaIniciadaRef.current = true;
       setCargandoTray(true);
       cargarTrayectoria(estrategiaSeleccionada).finally(() => setCargandoTray(false));
     }
-  }, [resultado, trayectoria, paramsEjecutados]);
+    if (trayectoria) cargaIniciadaRef.current = false;
+  }, [resultado, trayectoria, paramsEjecutados, cargandoTray, estrategiaSeleccionada, cargarTrayectoria]);
 
   const cambiarEstrategia = async (e: string) => {
     setEstrategiaSeleccionada(e);
