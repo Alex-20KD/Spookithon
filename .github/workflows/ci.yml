@@ -36,10 +36,10 @@ jobs:
 
     - name: Check frontend build (si aplica)
       run: |
-        if [ -d "src/app" ] && [ -f "src/app/package.json" ]; then
-          cd src/app
+        if [ -d "src/app/frontend" ] && [ -f "src/app/frontend/package.json" ]; then
+          cd src/app/frontend
           npm install
           npm run build
         else
-          echo "Frontend package.json no encontrado en src/app, omitiendo build automático por ahora."
+          echo "Frontend package.json no encontrado en src/app/frontend, omitiendo build automático por ahora."
         fi
