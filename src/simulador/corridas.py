@@ -83,7 +83,7 @@ def comparar(
         # MISMA red para todas las estrategias de esta corrida.
         red = construir_red(params.poblacion, semilla)
         for e in estrategias:
-            sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos)
+            sim = Simulacion(params, red, e, semilla=semilla)
             res = sim.correr()
             infectados[e.nombre][i] = res.infectados_totales
             curvas[e.nombre] += res.curva[:, ZOMBI]
