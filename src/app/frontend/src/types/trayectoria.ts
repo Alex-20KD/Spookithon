@@ -8,6 +8,8 @@ export interface PuntoGlobal {
   nuevos_contagios: number;
   dosis_dia: number;
   lugares_cerrados: number;
+  movimientos: { origen: string; destino: string; cantidad: number }[];
+  nuevos_focos: { dia: number; barrio_id: string; nuevos_contagios: number; infectados_acumulados: number; zombis_activos: number }[];
   eventos: { dia: number; tipo: string; titulo: string; cantidad?: number; dosis?: number; lugares?: number }[];
 }
 

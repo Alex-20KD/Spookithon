@@ -215,7 +215,14 @@ export default function MapPage() {
 
       <div className="split">
         <div>
-          {mapa && <EpidemicMap barrios={mapa.barrios} catalogo={catalogo} dia={dia} />}
+          {mapa && (
+            <EpidemicMap
+              barrios={mapa.barrios}
+              catalogo={catalogo}
+              dia={dia}
+              movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
+            />
+          )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
             {trayectoria
               ? "La evolución por día proviene de una trayectoria real del simulador (una corrida determinista)."

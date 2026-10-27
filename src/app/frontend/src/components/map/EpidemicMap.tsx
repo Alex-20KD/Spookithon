@@ -59,9 +59,10 @@ interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
   dia?: number;
+  movimientos?: { origen: string; destino: string; cantidad: number }[];
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -102,6 +103,7 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
     map.on("load", () => {
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
       map.addLayer({
@@ -167,6 +169,18 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
           "circle-stroke-width": 1,
           "circle-stroke-color": "#0C141D",
           "circle-opacity": 0.95,
+        },
+      });
+
+      // Líneas de movilidad agregada entre barrios.
+      map.addLayer({
+        id: "movimientos",
+        type: "line",
+        source: "movimientos",
+        paint: {
+          "line-color": "#4DA8FF",
+          "line-width": ["interpolate", ["linear"], ["get", "cantidad"], 1, 1, 20, 4],
+          "line-opacity": 0.7,
         },
       });
 
@@ -266,8 +280,34 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
       type: "FeatureCollection",
       features: edificios,
     });
+
+    // Líneas de movilidad entre barrios (coordenadas del catálogo).
+    const barrioCoord = new Map((catalogo?.barrios ?? []).map((b) => [b.id, b]));
+    const coordDe = (id: string) => {
+      const c = barrioCoord.get(id);
+      if (c) return [c.lng, c.lat] as [number, number];
+      const b = barrios.find((x) => x.id === id);
+      if (b && b.lat != null && b.lng != null) return [b.lng as number, b.lat as number];
+      return null;
+    };
+    const lineas = (movimientos ?? [])
+      .map((m) => {
+        const a = coordDe(m.origen);
+        const de = coordDe(m.destino);
+        if (!a || !de) return null;
+        return {
+          type: "Feature" as const,
+          geometry: { type: "LineString" as const, coordinates: [a, de] },
+          properties: { cantidad: m.cantidad },
+        };
+      })
+      .filter(Boolean);
+    (map.getSource("movimientos") as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: lineas as any,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, barrios, catalogo]);
+  }, [mapLoaded, barrios, catalogo, movimientos]);
 
   const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
     const map = mapRef.current;
