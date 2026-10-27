@@ -72,7 +72,7 @@ interface SimulationContextValue {
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
-  setDia: (d: number) => void;
+  setDia: (d: number | ((prev: number) => number)) => void;
 }
 
 const SimulationContext = createContext<SimulationContextValue | undefined>(
@@ -133,10 +133,13 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setParams(construirDefaults(meta));
   };
 
-  const setDia = (d: number) => {
-    const max = params.dias;
-    if (Number.isNaN(d)) return setDiaState(0);
-    setDiaState(Math.max(0, Math.min(max, Math.round(d))));
+  const setDia = (d: number | ((prev: number) => number)) => {
+    setDiaState((prev) => {
+      const next = typeof d === "function" ? (d as (p: number) => number)(prev) : d;
+      const max = params.dias;
+      if (Number.isNaN(next)) return 0;
+      return Math.max(0, Math.min(max, Math.round(next)));
+    });
   };
 
   const comparar = async (): Promise<CompararResponse | null> => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSimulation } from "../context/SimulationContext";
 import { obtenerCatalogo } from "../services/apiClient";
@@ -6,6 +6,7 @@ import PageTitle from "../components/ui/PageTitle";
 import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
 import EpidemicMap from "../components/map/EpidemicMap";
+import EventsPanel from "../components/EventsPanel";
 import type { CatalogoResponse } from "../types/api";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
@@ -23,18 +24,32 @@ export default function MapPage() {
   const [reproduciendo, setReproduciendo] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
 
+  const timerRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!reproduciendo) return;
-    const id = setInterval(() => {
-      if (dia >= params.dias) {
-        setReproduciendo(false);
-        setDia(0);
-      } else {
-        setDia(dia + 1);
+    if (!reproduciendo) {
+      if (timerRef.current != null) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
       }
+      return;
+    }
+    timerRef.current = window.setInterval(() => {
+      setDia((prev) => {
+        if (prev >= params.dias) {
+          setReproduciendo(false);
+          return 0;
+        }
+        return prev + 1;
+      });
     }, 1000 / velocidad);
-    return () => clearInterval(id);
-  }, [reproduciendo, dia, velocidad, params.dias, setDia]);
+    return () => {
+      if (timerRef.current != null) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [reproduciendo, velocidad, params.dias, setDia]);
 
   // El catálogo es geografía fija; se carga una vez para los edificios de
   // referencia. Si falla, el mapa igual funciona con los barrios del resultado.
@@ -139,6 +154,20 @@ export default function MapPage() {
             </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>
+                <span>Línea temporal</span>
+                <span className="val">{dia}</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={params.dias}
+                step={1}
+                value={dia}
+                onChange={(e) => { setReproduciendo(false); setDia(Number(e.target.value)); }}
+              />
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
                 <span>Velocidad</span>
                 <span className="val">{velocidad.toFixed(1)}x</span>
               </label>
@@ -189,6 +218,9 @@ export default function MapPage() {
           </Card>
         </div>
       </div>
+
+      <div style={{ height: 16 }} />
+      <EventsPanel resultado={resultado} dia={dia} />
     </div>
   );
 }
