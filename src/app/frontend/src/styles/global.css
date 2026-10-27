@@ -247,6 +247,25 @@ a { color: var(--blue); text-decoration: none; }
 .map-container { height: 620px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); position: relative; }
 .map-container .maplibregl-map { height: 100%; width: 100%; background: #080D13; }
 
+/* Popups oscuros legibles sobre el mapa. */
+.maplibregl-popup-content {
+  background: #16222E;
+  color: #F1F5F9;
+  border: 1px solid #263746;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.maplibregl-popup-tip {
+  border-top-color: #16222E;
+  border-bottom-color: #16222E;
+}
+.maplibregl-popup-close-button {
+  color: #F1F5F9;
+  font-size: 16px;
+}
+
 .map-side { display: flex; flex-direction: column; gap: 12px; }
 
 .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }

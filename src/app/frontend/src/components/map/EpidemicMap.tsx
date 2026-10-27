@@ -24,8 +24,8 @@ const DARK_STYLE = {
   layers: [
     { id: "background", type: "background", paint: { "background-color": "#080D13" } },
     { id: "water", type: "fill", source: "openmaptiles", "source-layer": "water", paint: { "fill-color": "#0C1A24" } },
-    { id: "roads", type: "line", source: "openmaptiles", "source-layer": "transportation", paint: { "line-color": "#263746", "line-width": ["interpolate", ["zoom"], 10, 0.4, 14, 1.6] } },
-    { id: "buildings", type: "fill", source: "openmaptiles", "source-layer": "building", paint: { "fill-color": "#121C26", "fill-opacity": 0.7 } },
+    { id: "roads", type: "line", source: "openmaptiles", "source-layer": "transportation", paint: { "line-color": "#3B5068", "line-width": ["interpolate", ["zoom"], 10, 0.5, 14, 1.8] } },
+    { id: "buildings", type: "fill", source: "openmaptiles", "source-layer": "building", paint: { "fill-color": "#1A2533", "fill-opacity": 0.85 } },
   ],
 };
 
@@ -46,6 +46,13 @@ function colorRiesgo(ratio: number): string {
   if (ratio < 0.5) return "#FF7A45"; // medio
   if (ratio < 0.75) return "#FF4D5A"; // alto
   return "#8B1E2D"; // crítico
+}
+
+function nivelRiesgo(ratio: number): string {
+  if (ratio < 0.25) return "Bajo";
+  if (ratio < 0.5) return "Medio";
+  if (ratio < 0.75) return "Alto";
+  return "Crítico";
 }
 
 interface Props {
@@ -80,20 +87,22 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
         style: getStyle() as maplibregl.StyleSpecification | string,
         center: centro,
         zoom: 12.4,
-        pitch: 45,
+        pitch: 60,
         bearing: -15,
+        maxPitch: 85,
       });
     } catch {
       setMapError(true);
       return;
     }
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
     map.on("error", () => setMapError(true));
 
     map.on("load", () => {
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("zonas3d", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
       map.addLayer({
@@ -113,6 +122,19 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 40],
           "heatmap-opacity": 0.55,
+        },
+      });
+
+      // Zonas 3D agregadas por barrio (representación de magnitud, ilustrativa).
+      map.addLayer({
+        id: "zonas3d",
+        type: "fill-extrusion",
+        source: "zonas3d",
+        paint: {
+          "fill-extrusion-color": ["get", "color"],
+          "fill-extrusion-height": ["get", "altura"],
+          "fill-extrusion-base": 0,
+          "fill-extrusion-opacity": 0.75,
         },
       });
 
@@ -166,14 +188,18 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0];
         if (!f) return;
-        const p = f.properties as Record<string, unknown>;
+        const props = f.properties as Record<string, unknown>;
+        const ratio = Number(props.ratio ?? 0);
         popupRef.current?.remove();
-        popupRef.current = new maplibregl.Popup({ closeButton: false, offset: 12 })
+        popupRef.current = new maplibregl.Popup({ closeButton: true, offset: 12, className: "map-popup-dark" })
           .setLngLat(e.lngLat)
           .setHTML(
-            `<div style="color:#E6EDF3;font-size:12px">
-               <strong>${p.nombre}</strong><br/>
-               Infectados (media): ${p.infectados}
+            `<div style="color:#F1F5F9;font-size:13px;min-width:160px">
+               <div style="font-weight:700;font-size:14px;margin-bottom:4px">${props.nombre}</div>
+               <div>Infectados (media): <strong>${Number(props.infectados).toLocaleString("es-EC")}</strong></div>
+               <div>Nivel de riesgo: <strong style="color:${props.color}">${nivelRiesgo(ratio)}</strong></div>
+               <div>Día de simulación: <strong>${dia ?? 0}</strong></div>
+               <div style="font-size:11px;color:#8B9BB0;margin-top:4px">Datos agregados (real) · animación por día ilustrativa</div>
              </div>`,
           )
           .addTo(map);
@@ -194,7 +220,7 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
             "source-layer": "building",
             paint: {
               "fill-extrusion-color": "#16222E",
-              "fill-extrusion-height": ["coalesce", ["get", "height"], 8],
+              "fill-extrusion-height": ["*", ["coalesce", ["get", "height"], 8], 2.2],
               "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
               "fill-extrusion-opacity": 0.5,
             },
@@ -245,6 +271,36 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
       features,
     });
 
+    // Zonas 3D agregadas por barrio (ilustrativas de magnitud).
+    const zonas = conGeo.map((b) => {
+      const inf = b.infectados_media ?? 0;
+      const ratio = inf / maxInf;
+      const lado = 0.009;
+      const lng = b.lng as number;
+      const lat = b.lat as number;
+      const coords = [
+        [lng - lado, lat - lado],
+        [lng + lado, lat - lado],
+        [lng + lado, lat + lado],
+        [lng - lado, lat + lado],
+        [lng - lado, lat - lado],
+      ];
+      return {
+        type: "Feature" as const,
+        geometry: { type: "Polygon" as const, coordinates: [coords] },
+        properties: {
+          nombre: b.nombre,
+          altura: Math.max(18, ratio * 150),
+          color: colorRiesgo(ratio),
+          ratio,
+        },
+      };
+    });
+    (map.getSource("zonas3d") as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: zonas,
+    });
+
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
       type: "Feature" as const,
       geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
@@ -266,7 +322,7 @@ export default function EpidemicMap({ barrios, catalogo, dia }: Props) {
   const centrarManta = () => {
     const map = mapRef.current;
     if (!map) return;
-    map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 45, bearing: -15, duration: 1200 });
+    map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 60, bearing: -15, duration: 1200 });
   };
 
   return (
