@@ -3,6 +3,7 @@ import { useSimulation } from "../context/SimulationContext";
 import PageTitle from "../components/ui/PageTitle";
 import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
+import { nombreAmigable, DESCRIPCIONES_ESTRATEGIA, esLineaBase } from "../utils/estrategias";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
 
@@ -58,13 +59,15 @@ export default function Strategies() {
       <div className="grid grid-3">
         {estrategias.map((e) => {
           const esMejor = e.nombre === resultado.mejor_estrategia;
-          const base = e.nombre === "Nada" || e.nombre === "Azar";
           return (
             <div key={e.nombre} className={`strat-card ${esMejor ? "recommended" : ""}`}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 700 }}>{e.nombre}</div>
+                <div style={{ fontWeight: 700 }}>{nombreAmigable(e.nombre)}</div>
                 {esMejor && <Pill color="green">Recomendada</Pill>}
-                {base && <Pill color="orange">Línea base</Pill>}
+                {esLineaBase(e.nombre) && <Pill color="orange">Línea base</Pill>}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                {DESCRIPCIONES_ESTRATEGIA[e.nombre]}
               </div>
               <div style={{ marginTop: 10, fontSize: 13, color: "var(--muted)" }}>
                 <div>
