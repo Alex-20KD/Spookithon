@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Fondo de TV con interferencia -->
+  <rect width="1920" height="1080" fill="#1a1a1a"/>
+  
+  <!-- Pantalla de TV -->
+  <rect x="240" y="140" width="1440" height="800" fill="#000" stroke="#333" stroke-width="20"/>
+  
+  <!-- Interferencia -->
+  <rect x="260" y="160" width="1400" height="40" fill="#fff" opacity="0.1">
+    <animate attributeName="y" values="160;900;160" dur="0.5s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Logo de noticias -->
+  <rect x="300" y="200" width="200" height="80" fill="#8b0000"/>
+  <text x="400" y="250" text-anchor="middle" fill="#fff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">
+    NOTICIAS
+  </text>
+  
+  <!-- Barra de noticias -->
+  <rect x="260" y="820" width="1400" height="100" fill="#8b0000" opacity="0.8"/>
+  
+  <!-- Texto de alerta -->
+  <text x="960" y="450" text-anchor="middle" fill="#ff0000" font-size="72" font-family="Arial, sans-serif" font-weight="bold">
+    ⚠️ ÚLTIMA HORA ⚠️
+  </text>
+  <text x="960" y="550" text-anchor="middle" fill="#fff" font-size="48" font-family="Arial, sans-serif">
+    BROTE DESCONOCIDO EN MANTA
+  </text>
+  <text x="960" y="650" text-anchor="middle" fill="#ccc" font-size="36" font-family="Arial, sans-serif">
+    Las autoridades investigan los primeros casos
+  </text>
+  
+  <!-- Barra de texto deslizante -->
+  <text x="1400" y="880" fill="#fff" font-size="28" font-family="Arial, sans-serif">
+    ALERTA SANITARIA • EVITAR ZONA PORTUARIA • MANTÉNGASE INFORMADO
+    <animate attributeName="x" from="1400" to="-1000" dur="15s" repeatCount="indefinite"/>
+  </text>
+  
+  <!-- Texto -->
+  <text x="960" y="1020" text-anchor="middle" fill="#999" font-size="24" font-family="Arial, sans-serif">
+    Reemplaza este archivo con escena3.png
+  </text>
+</svg>

@@ -1,0 +1,149 @@
+.canton-detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.no-selection {
+  text-align: center;
+  opacity: 0.6;
+  font-style: italic;
+  padding: 20px;
+}
+
+.canton-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.canton-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 3px solid #4a1f4f;
+}
+
+.canton-stat-label {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.canton-stat-value {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.canton-status {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.status-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-label {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-badge.active {
+  background: rgba(74, 140, 42, 0.3);
+  color: #4a8c2a;
+  border: 1px solid #4a8c2a;
+}
+
+.status-badge.inactive {
+  background: rgba(102, 102, 102, 0.3);
+  color: #999;
+  border: 1px solid #666;
+}
+
+.canton-actions h3 {
+  font-size: 16px;
+  color: #9d4edd;
+  margin-bottom: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 15px;
+  font-size: 12px;
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.3);
+}
+
+.action-icon {
+  font-size: 24px;
+}
+
+.action-name {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.action-cost {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.canton-stat-value.blood-text {
+  color: #ff4d4d;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.action-buttons .tip-anchor,
+.action-buttons .action-btn {
+  width: 100%;
+  height: 100%;
+}
+
+.action-btn {
+  padding: 10px 6px;
+  letter-spacing: 0.5px;
+}
+
+.action-name {
+  font-size: 12px;
+  line-height: 1.2;
+}

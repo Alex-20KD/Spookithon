@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Fondo oscuro -->
+  <rect width="1920" height="1080" fill="#0a0a0a"/>
+  
+  <!-- Muelle -->
+  <rect y="800" width="1920" height="280" fill="#2a2a2a"/>
+  <rect x="100" y="850" width="20" height="230" fill="#1a1a1a"/>
+  <rect x="400" y="850" width="20" height="230" fill="#1a1a1a"/>
+  <rect x="700" y="850" width="20" height="230" fill="#1a1a1a"/>
+  
+  <!-- Silueta del marinero -->
+  <ellipse cx="960" cy="400" rx="120" ry="180" fill="#000"/>
+  <circle cx="960" cy="300" r="80" fill="#000"/>
+  <rect x="900" y="580" width="50" height="200" fill="#000"/>
+  <rect x="970" y="580" width="50" height="200" fill="#000"/>
+  
+  <!-- Ojos brillantes -->
+  <circle cx="930" cy="290" r="15" fill="#ff0000">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="990" cy="290" r="15" fill="#ff0000">
+    <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="930" cy="290" r="8" fill="#ffff00"/>
+  <circle cx="990" cy="290" r="8" fill="#ffff00"/>
+  
+  <!-- Niebla -->
+  <ellipse cx="960" cy="900" rx="600" ry="100" fill="#fff" opacity="0.1"/>
+  
+  <!-- Texto -->
+  <text x="960" y="950" text-anchor="middle" fill="#8b0000" font-size="48" font-family="Arial, sans-serif" font-weight="bold">
+    ESCENA 2: EL MARINERO INFECTADO
+  </text>
+  <text x="960" y="1020" text-anchor="middle" fill="#999" font-size="24" font-family="Arial, sans-serif">
+    Reemplaza este archivo con escena2.png
+  </text>
+</svg>

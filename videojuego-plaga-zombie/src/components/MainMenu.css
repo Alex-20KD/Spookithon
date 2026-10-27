@@ -1,0 +1,128 @@
+.main-menu {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: radial-gradient(ellipse at center, #1a0a1a 0%, #0a0a0a 100%);
+  display: flex;
+  overflow-x: hidden;
+  overflow-y: auto; /* en pantallas bajas se desplaza en vez de recortar el título */
+}
+
+.fog-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(157, 78, 221, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(139, 0, 0, 0.1) 0%, transparent 50%);
+  animation: fogMove 20s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.menu-content {
+  position: relative;
+  z-index: 10;
+  margin: auto; /* centra vertical y horizontalmente sin recortar el contenido */
+  width: 100%;
+  max-width: 1200px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.game-title {
+  margin: 0 0 16px;
+  line-height: 1.1;
+  color: #8b0000;
+}
+
+.title-main {
+  display: inline-block;
+  font-size: clamp(44px, 9vw, 104px);
+  white-space: nowrap;
+  padding: 0 0.15em; /* deja espacio a la animación de escala */
+}
+
+.game-title .subtitle {
+  display: block;
+  font-size: clamp(30px, 5.5vw, 60px);
+  color: #9d4edd;
+  margin-top: 6px;
+}
+
+.menu-description {
+  margin: 24px 0 40px;
+  font-size: 20px;
+}
+
+.menu-description p {
+  margin: 12px 0;
+  font-style: italic;
+}
+
+.mode-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.mode-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 20px;
+  min-width: 0;
+}
+
+.mode-icon {
+  font-size: 48px;
+}
+
+.mode-name {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.mode-desc {
+  font-size: 13px;
+  font-family: Arial, sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  opacity: 0.8;
+}
+
+.menu-secondary {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 36px;
+}
+
+.trailer-button {
+  padding: 12px 32px;
+  font-size: 16px;
+}
+
+.credits {
+  margin-top: 40px;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .mode-buttons {
+    grid-template-columns: minmax(0, 420px);
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-description {
+    font-size: 16px;
+  }
+}
