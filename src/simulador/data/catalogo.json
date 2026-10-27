@@ -1,0 +1,29 @@
+{
+  "_nota": "COORDENADAS DE EJEMPLO, reemplazar por reales",
+  "barrios": [
+    { "id": "b01", "nombre": "Barrio 01", "lat": -0.9510, "lng": -80.7230 },
+    { "id": "b02", "nombre": "Barrio 02", "lat": -0.9485, "lng": -80.7260 },
+    { "id": "b03", "nombre": "Barrio 03", "lat": -0.9540, "lng": -80.7195 },
+    { "id": "b04", "nombre": "Barrio 04", "lat": -0.9460, "lng": -80.7285 },
+    { "id": "b05", "nombre": "Barrio 05", "lat": -0.9565, "lng": -80.7250 },
+    { "id": "b06", "nombre": "Barrio 06", "lat": -0.9500, "lng": -80.7180 },
+    { "id": "b07", "nombre": "Barrio 07", "lat": -0.9435, "lng": -80.7220 },
+    { "id": "b08", "nombre": "Barrio 08", "lat": -0.9590, "lng": -80.7300 },
+    { "id": "b09", "nombre": "Barrio 09", "lat": -0.9520, "lng": -80.7320 },
+    { "id": "b10", "nombre": "Barrio 10", "lat": -0.9470, "lng": -80.7155 },
+    { "id": "b11", "nombre": "Barrio 11", "lat": -0.9610, "lng": -80.7210 },
+    { "id": "b12", "nombre": "Barrio 12", "lat": -0.9550, "lng": -80.7340 }
+  ],
+  "edificios": [
+    { "id": "e01", "nombre": "Colegio 01", "tipo": "colegio",  "barrio_id": "b01", "lat": -0.9512, "lng": -80.7235 },
+    { "id": "e02", "nombre": "Colegio 02", "tipo": "colegio",  "barrio_id": "b02", "lat": -0.9488, "lng": -80.7262 },
+    { "id": "e03", "nombre": "Colegio 03", "tipo": "colegio",  "barrio_id": "b03", "lat": -0.9543, "lng": -80.7198 },
+    { "id": "e04", "nombre": "Colegio 04", "tipo": "colegio",  "barrio_id": "b04", "lat": -0.9463, "lng": -80.7288 },
+    { "id": "e05", "nombre": "Colegio 05", "tipo": "colegio",  "barrio_id": "b05", "lat": -0.9568, "lng": -80.7253 },
+    { "id": "e06", "nombre": "Colegio 06", "tipo": "colegio",  "barrio_id": "b06", "lat": -0.9503, "lng": -80.7183 },
+    { "id": "e07", "nombre": "Colegio 07", "tipo": "colegio",  "barrio_id": "b07", "lat": -0.9438, "lng": -80.7223 },
+    { "id": "e08", "nombre": "Colegio 08", "tipo": "colegio",  "barrio_id": "b08", "lat": -0.9593, "lng": -80.7303 },
+    { "id": "e09", "nombre": "Mercado Central", "tipo": "mercado", "barrio_id": "b09", "lat": -0.9522, "lng": -80.7322 },
+    { "id": "e10", "nombre": "Hospital General", "tipo": "hospital", "barrio_id": "b10", "lat": -0.9472, "lng": -80.7158 }
+  ]
+}
