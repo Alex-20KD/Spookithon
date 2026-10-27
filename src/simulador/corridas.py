@@ -42,6 +42,9 @@ class ResumenEstrategia:
     # cuando se usa comparar() clásico y se llenan con comparar_detallado().
     curva_zombis_p10: np.ndarray | None = None
     curva_zombis_p90: np.ndarray | None = None
+    # Infectados medios por barrio (orden canónico del catálogo). None cuando no
+    # se calcula el desglose espacial; se llena en resumir_corridas().
+    infectados_por_barrio_media: np.ndarray | None = None
 
 
 def comparar(
@@ -122,7 +125,7 @@ def correr_una_corrida(
     params: Params,
     indice: int,
     estrategias: list | None = None,
-) -> dict[str, tuple[int, np.ndarray]]:
+) -> dict[str, tuple[int, np.ndarray, np.ndarray]]:
     """Ejecuta UNA corrida (la ``indice``) para todas las estrategias.
 
     Usa la semilla ``params.semilla + indice`` y la MISMA red para todas las
@@ -132,23 +135,38 @@ def correr_una_corrida(
     paralelizar por corrida sin alterar los números.
 
     Returns:
-        ``{nombre_estrategia: (infectados_totales, curva_zombis)}`` donde
-        ``curva_zombis`` es un array de longitud ``dias+1``.
+        ``{nombre_estrategia: (infectados_totales, curva_zombis, por_barrio)}``
+        donde ``curva_zombis`` es un array de longitud ``dias+1`` y
+        ``por_barrio`` es el nº de infectados por barrio (orden del catálogo).
     """
     estrategias = _normalizar_estrategias(estrategias)
     semilla = params.semilla + indice
     red = construir_red(params.poblacion, semilla)
-    salida: dict[str, tuple[int, np.ndarray]] = {}
+    salida: dict[str, tuple[int, np.ndarray, np.ndarray]] = {}
     for e in estrategias:
         sim = Simulacion(params, red, e, semilla=semilla)
         res = sim.correr()
-        salida[e.nombre] = (res.infectados_totales, res.curva[:, ZOMBI].copy())
+        salida[e.nombre] = (
+            res.infectados_totales,
+            res.curva[:, ZOMBI].copy(),
+            res.infectados_por_barrio.copy(),
+        )
     return salida
+
+
+def barrios_orden(params: Params) -> list[str]:
+    """Devuelve los ids de barrio en el orden canónico (el del catálogo).
+
+    Útil para rotular el vector ``infectados_por_barrio_media`` que produce
+    :func:`resumir_corridas`. El orden no depende de la semilla.
+    """
+    red = construir_red(params.poblacion, params.semilla)
+    return list(red.barrios_ids)
 
 
 def resumir_corridas(
     params: Params,
-    por_corrida: list[dict[str, tuple[int, np.ndarray]]],
+    por_corrida: list[dict[str, tuple[int, np.ndarray, np.ndarray]]],
     estrategias: list | None = None,
 ) -> dict[str, ResumenEstrategia]:
     """Agrega los resultados de varias corridas en :class:`ResumenEstrategia`.
@@ -156,6 +174,8 @@ def resumir_corridas(
     ``por_corrida`` debe venir EN ORDEN (corrida 0, 1, 2, ...). El orden importa
     para que la media/percentiles sean idénticos corrida a corrida; por eso el
     backend ordena por índice antes de llamar aquí.
+
+    Cada valor es ``(infectados_totales, curva_zombis, infectados_por_barrio)``.
     """
     estrategias = _normalizar_estrategias(estrategias)
     n_corridas = len(por_corrida)
@@ -165,10 +185,19 @@ def resumir_corridas(
         e.nombre: np.zeros((n_corridas, params.dias + 1), dtype=np.float64)
         for e in estrategias
     }
+    # Acumulador por barrio: se dimensiona al ver la primera corrida.
+    barrios_por_corrida: dict[str, np.ndarray] = {}
     for i, corrida in enumerate(por_corrida):
-        for nombre, (inf_tot, curva) in corrida.items():
+        for nombre, valor in corrida.items():
+            inf_tot, curva, por_barrio = valor
             infectados[nombre][i] = inf_tot
             curvas_por_corrida[nombre][i] = curva
+            por_barrio = np.asarray(por_barrio, dtype=np.float64)
+            if nombre not in barrios_por_corrida:
+                barrios_por_corrida[nombre] = np.zeros(
+                    (n_corridas, por_barrio.shape[0]), dtype=np.float64
+                )
+            barrios_por_corrida[nombre][i] = por_barrio
 
     base = infectados["Nada"]
     resumen: dict[str, ResumenEstrategia] = {}
@@ -176,6 +205,7 @@ def resumir_corridas(
         inf = infectados[e.nombre]
         salvados = base - inf
         curvas_e = curvas_por_corrida[e.nombre]
+        barrios_e = barrios_por_corrida.get(e.nombre)
         resumen[e.nombre] = ResumenEstrategia(
             nombre=e.nombre,
             infectados_media=float(inf.mean()),
@@ -187,6 +217,9 @@ def resumir_corridas(
             curva_zombis=curvas_e.mean(axis=0),
             curva_zombis_p10=np.percentile(curvas_e, 10, axis=0),
             curva_zombis_p90=np.percentile(curvas_e, 90, axis=0),
+            infectados_por_barrio_media=(
+                barrios_e.mean(axis=0) if barrios_e is not None else None
+            ),
         )
     return resumen
 

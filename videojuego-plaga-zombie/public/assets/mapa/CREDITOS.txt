@@ -1,0 +1,14 @@
+Límites cantonales de Manabí (22 cantones).
+Fuente: INEC Ecuador, cartografía 2015, redistribuida en el paquete npm "ec-atlas" 0.0.7 (licencia MIT, Carlos León).
+
+manabi-cantones.geojson
+  Geometría real de los 22 cantones (objeto level3, códigos DPA 1301-1322), en longitud/latitud.
+  Cada cantón incluye: id, nombre, poblacion, centro [longitud, latitud] (punto interior usado
+  para la etiqueta), area_km2 y vecinos (ids de cantones que comparten frontera, calculados a
+  partir de los arcos compartidos de la topología; la relación es simétrica).
+
+provincias-contexto.geojson
+  Provincias vecinas (objeto level2), solo como fondo del mapa. No son interactivas.
+
+manabi-cantones.original.geojson
+  Versión anterior con polígonos aproximados, conservada como respaldo. El juego no la usa.

@@ -1,8 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { Settings2, Shield, BarChart3, LayoutDashboard } from "lucide-react";
+import { Map, Settings2, Shield, BarChart3, LayoutDashboard } from "lucide-react";
 
 const items = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/mapa", label: "Mapa Epidemiológico", icon: Map },
   { to: "/simulador", label: "Simulador", icon: Settings2 },
   { to: "/estrategias", label: "Estrategias", icon: Shield },
   { to: "/resultados", label: "Resultados", icon: BarChart3 },

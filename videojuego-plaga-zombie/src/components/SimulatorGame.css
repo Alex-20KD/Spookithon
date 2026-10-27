@@ -1,0 +1,158 @@
+.simulator-game {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 30px;
+  background: rgba(20, 10, 25, 0.95);
+  border-bottom: 2px solid #4a1f4f;
+  box-shadow: 0 4px 20px rgba(139, 0, 0, 0.3);
+}
+
+.game-header h1 {
+  font-size: 32px;
+  margin: 0;
+  color: #9d4edd;
+}
+
+.header-left,
+.header-right {
+  width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-right {
+  justify-content: flex-end;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.difficulty-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #6b3fa0;
+  background: rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.advisor-button {
+  padding: 10px 16px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.advisor-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #4a1f4f;
+  background: rgba(0, 0, 0, 0.4);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  border-color: #9d4edd;
+}
+
+@media (max-width: 1100px) {
+  .game-header {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .game-header h1 {
+    font-size: 22px;
+  }
+
+  .header-left,
+  .header-right {
+    width: auto;
+  }
+}
+
+.back-button {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.game-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr) 320px;
+  gap: 20px;
+  padding: 20px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.left-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* evita la barra horizontal con el cuadro blanco */
+  padding-right: 4px;
+}
+
+.left-panel > *,
+.right-panel > * {
+  flex-shrink: 0;
+}
+
+.game-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .game-layout {
+    grid-template-columns: 280px minmax(0, 1fr) 280px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .game-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(420px, 1fr) auto;
+    overflow-y: auto;
+  }
+  
+  .left-panel,
+  .right-panel {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  
+  .left-panel > *,
+  .right-panel > * {
+    min-width: 300px;
+  }
+}

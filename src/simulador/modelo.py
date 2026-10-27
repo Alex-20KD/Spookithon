@@ -42,12 +42,17 @@ class Resultado:
         curva: array (dias+1, N_ESTADOS) con conteos por estado por día (incluye día 0).
         dosis_usadas: total de dosis aplicadas (incluye desperdiciadas).
         dias_cierre: suma acumulada de lugares-cerrados por día.
+        infectados_por_barrio: nº de personas alguna vez infectadas por barrio,
+            en el orden canónico ``red.barrios_ids`` (longitud = nº de barrios).
+            Se deriva del estado final sin consumir aleatoriedad: no altera
+            ningún otro resultado de la corrida.
     """
 
     infectados_totales: int
     curva: np.ndarray
     dosis_usadas: int
     dias_cierre: int
+    infectados_por_barrio: np.ndarray
 
 
 class Simulacion:
@@ -181,7 +186,28 @@ class Simulacion:
             curva=self.curva,
             dosis_usadas=self.dosis_usadas,
             dias_cierre=self.dias_cierre,
+            infectados_por_barrio=self._infectados_por_barrio(),
         )
+
+    # ------------------------------------------------------------------ #
+    # Agregación por barrio (derivada, sin azar)
+    # ------------------------------------------------------------------ #
+    def _infectados_por_barrio(self) -> np.ndarray:
+        """Cuenta personas alguna vez infectadas por barrio (orden del catálogo).
+
+        No consume aleatoriedad ni altera la dinámica: es una lectura del estado
+        final (``fue_infectado``) agrupada por el barrio de cada persona.
+        """
+        red = self.red
+        # Conteo de infectados por índice de lugar (solo tendrán valor los
+        # índices que sean barrios, el resto queda en 0).
+        por_lugar = np.bincount(
+            red.barrio_persona,
+            weights=self.fue_infectado.astype(np.float64),
+            minlength=red.n_lugares,
+        )
+        # Reordenar al orden canónico de barrios del catálogo.
+        return por_lugar[red.barrios_lugar_idx].astype(np.int64)
 
     # ------------------------------------------------------------------ #
     # (a) Estrategia

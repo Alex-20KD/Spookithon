@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Cielo oscuro -->
+  <rect width="1920" height="1080" fill="#1a0a0a"/>
+  
+  <!-- Edificios -->
+  <rect x="0" y="500" width="300" height="580" fill="#0a0a0a"/>
+  <rect x="320" y="400" width="250" height="680" fill="#0a0a0a"/>
+  <rect x="590" y="450" width="200" height="630" fill="#0a0a0a"/>
+  <rect x="1300" y="480" width="280" height="600" fill="#0a0a0a"/>
+  <rect x="1600" y="420" width="320" height="660" fill="#0a0a0a"/>
+  
+  <!-- Ventanas rotas -->
+  <rect x="50" y="550" width="40" height="50" fill="#ff0000" opacity="0.3"/>
+  <rect x="370" y="500" width="40" height="50" fill="#ff0000" opacity="0.4"/>
+  <rect x="1400" y="550" width="50" height="60" fill="#ff0000" opacity="0.3"/>
+  
+  <!-- Calle -->
+  <rect y="900" width="1920" height="180" fill="#1a1a1a"/>
+  
+  <!-- Siluetas de zombies -->
+  <ellipse cx="400" cy="850" rx="60" ry="100" fill="#000" opacity="0.8"/>
+  <ellipse cx="800" cy="870" rx="50" ry="90" fill="#000" opacity="0.7"/>
+  <ellipse cx="1200" cy="840" rx="70" ry="110" fill="#000" opacity="0.8"/>
+  <ellipse cx="1500" cy="860" rx="55" ry="95" fill="#000" opacity="0.7"/>
+  
+  <!-- Humo/niebla -->
+  <ellipse cx="960" cy="950" rx="800" ry="150" fill="#fff" opacity="0.05"/>
+  
+  <!-- Luna roja -->
+  <circle cx="1600" cy="200" r="100" fill="#8b0000" opacity="0.6"/>
+  
+  <!-- Texto -->
+  <text x="960" y="950" text-anchor="middle" fill="#8b0000" font-size="48" font-family="Arial, sans-serif" font-weight="bold">
+    ESCENA 4: PORTOVIEJO EN CAOS
+  </text>
+  <text x="960" y="1020" text-anchor="middle" fill="#999" font-size="24" font-family="Arial, sans-serif">
+    Reemplaza este archivo con escena4.png
+  </text>
+</svg>

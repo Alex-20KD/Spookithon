@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Sala de emergencias -->
+  <rect width="1920" height="1080" fill="#0a0a0a"/>
+  
+  <!-- Paredes -->
+  <rect x="0" y="0" width="400" height="1080" fill="#1a1a1a"/>
+  <rect x="1520" y="0" width="400" height="1080" fill="#1a1a1a"/>
+  
+  <!-- Mesa de conferencias -->
+  <ellipse cx="960" cy="800" rx="500" ry="150" fill="#2a2a2a"/>
+  
+  <!-- Mapa grande en la pared -->
+  <rect x="600" y="200" width="720" height="500" fill="#000" stroke="#333" stroke-width="10"/>
+  
+  <!-- Mapa de Manabí simplificado -->
+  <path d="M 800 300 L 1000 280 L 1100 350 L 1150 450 L 1100 550 L 950 600 L 800 580 L 750 500 L 780 400 Z" 
+        fill="#8b0000" opacity="0.7" stroke="#ff0000" stroke-width="3"/>
+  
+  <!-- Puntos rojos en el mapa -->
+  <circle cx="850" cy="400" r="10" fill="#ff0000">
+    <animate attributeName="r" values="8;12;8" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="1000" cy="450" r="10" fill="#ff0000">
+    <animate attributeName="r" values="8;12;8" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="1080" cy="500" r="10" fill="#ff0000">
+    <animate attributeName="r" values="8;12;8" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Siluetas de personas mirando el mapa -->
+  <ellipse cx="400" cy="850" rx="80" ry="120" fill="#000" opacity="0.6"/>
+  <ellipse cx="1520" cy="870" rx="70" ry="110" fill="#000" opacity="0.6"/>
+  
+  <!-- Luces de emergencia -->
+  <circle cx="300" cy="100" r="30" fill="#ff0000" opacity="0.4">
+    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="1620" cy="100" r="30" fill="#ff0000" opacity="0.4">
+    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Texto de alerta en el mapa -->
+  <text x="960" y="350" text-anchor="middle" fill="#fff" font-size="36" font-family="Arial, sans-serif" font-weight="bold">
+    PROVINCIA DE MANABÍ
+  </text>
+  <text x="960" y="400" text-anchor="middle" fill="#ff0000" font-size="28" font-family="Arial, sans-serif" font-weight="bold">
+    NIVEL DE ALERTA: CRÍTICO
+  </text>
+  
+  <!-- Texto -->
+  <text x="960" y="950" text-anchor="middle" fill="#8b0000" font-size="48" font-family="Arial, sans-serif" font-weight="bold">
+    ESCENA 5: SALA DE EMERGENCIAS
+  </text>
+  <text x="960" y="1020" text-anchor="middle" fill="#999" font-size="24" font-family="Arial, sans-serif">
+    Reemplaza este archivo con escena5.png
+  </text>
+</svg>

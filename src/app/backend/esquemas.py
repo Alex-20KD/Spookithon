@@ -110,7 +110,31 @@ class ResultadoEstrategia(BaseModel):
     pct_mejor_que_nada: float = Field(
         description="% de corridas con menos infectados que 'Nada'."
     )
+    infectados_por_barrio: list[float] | None = Field(
+        default=None,
+        description="Infectados medios por barrio (orden de 'mapa.barrios').",
+    )
     curva_diaria: CurvaDiaria
+
+
+class BarrioMapa(BaseModel):
+    """Un barrio para el mapa: geografía + infectados medios de la mejor estrategia."""
+
+    id: str
+    nombre: str
+    lat: float | None = Field(default=None, description="Latitud (puede faltar).")
+    lng: float | None = Field(default=None, description="Longitud (puede faltar).")
+    infectados_media: float | None = Field(
+        default=None, description="Infectados medios en el barrio."
+    )
+
+
+class Mapa(BaseModel):
+    """Bloque de mapa: barrios con coordenadas e infectados de la mejor estrategia."""
+
+    aviso: str = Field(description="Aviso de que son datos simulados.")
+    estrategia: str = Field(description="Estrategia usada para el desglose (la mejor).")
+    barrios: list[BarrioMapa]
 
 
 class RespuestaComparar(BaseModel):
@@ -127,6 +151,7 @@ class RespuestaComparar(BaseModel):
     )
     semilla: int
     n_corridas: int
+    mapa: Mapa = Field(description="Desglose geográfico por barrio para el mapa.")
 
 
 class RangoParametro(BaseModel):

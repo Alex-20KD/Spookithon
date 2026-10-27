@@ -1,0 +1,379 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "manta",
+        "nombre": "Manta",
+        "poblacion": 250000,
+        "centro": [-80.7324, -0.9606],
+        "area_km2": 306.9,
+        "vecinos": ["montecristi", "jaramijo"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.78, -0.91], [-80.72, -0.88], [-80.68, -0.96], [-80.70, -1.02], [-80.76, -1.00], [-80.78, -0.91]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "portoviejo",
+        "nombre": "Portoviejo",
+        "poblacion": 280000,
+        "centro": [-80.4542, -1.0545],
+        "area_km2": 967.5,
+        "vecinos": ["montecristi", "rocafuerte", "santa-ana", "junin", "24-de-mayo"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.60, -0.95], [-80.40, -0.92], [-80.30, -1.05], [-80.35, -1.15], [-80.55, -1.12], [-80.60, -0.95]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "montecristi",
+        "nombre": "Montecristi",
+        "poblacion": 75000,
+        "centro": [-80.6570, -1.0444],
+        "area_km2": 734.2,
+        "vecinos": ["manta", "jaramijo", "portoviejo"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.78, -1.00], [-80.70, -1.02], [-80.60, -0.95], [-80.55, -1.12], [-80.68, -1.15], [-80.78, -1.00]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "jaramijo",
+        "nombre": "Jaramijó",
+        "poblacion": 20000,
+        "centro": [-80.8086, -0.9289],
+        "area_km2": 10.8,
+        "vecinos": ["manta", "montecristi"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.82, -0.90], [-80.78, -0.91], [-80.80, -0.95], [-80.82, -0.90]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "jipijapa",
+        "nombre": "Jipijapa",
+        "poblacion": 80000,
+        "centro": [-80.5784, -1.3486],
+        "area_km2": 1413.1,
+        "vecinos": ["24-de-mayo", "puerto-lopez", "pajan"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.70, -1.20], [-80.45, -1.22], [-80.40, -1.45], [-80.65, -1.50], [-80.70, -1.20]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "chone",
+        "nombre": "Chone",
+        "poblacion": 130000,
+        "centro": [-80.0940, -0.6944],
+        "area_km2": 3570.0,
+        "vecinos": ["flavio-alfaro", "el-carmen", "tosagua", "bolivar", "junin"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.30, -0.55], [-79.95, -0.52], [-79.85, -0.78], [-80.10, -0.85], [-80.30, -0.75], [-80.30, -0.55]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "el-carmen",
+        "nombre": "El Carmen",
+        "poblacion": 95000,
+        "centro": [-79.4585, -0.2689],
+        "area_km2": 1229.2,
+        "vecinos": ["chone", "flavio-alfaro", "pichincha"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.70, -0.15], [-79.30, -0.18], [-79.25, -0.40], [-79.65, -0.42], [-79.70, -0.15]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pedernales",
+        "nombre": "Pedernales",
+        "poblacion": 60000,
+        "centro": [-80.0531, 0.0708],
+        "area_km2": 1969.7,
+        "vecinos": ["jama", "flavio-alfaro"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.20, 0.15], [-79.85, 0.10], [-79.80, -0.05], [-80.15, -0.02], [-80.20, 0.15]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "jama",
+        "nombre": "Jama",
+        "poblacion": 25000,
+        "centro": [-80.2706, 0.1925],
+        "area_km2": 563.8,
+        "vecinos": ["pedernales", "san-vicente"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.38, 0.25], [-80.20, 0.15], [-80.15, -0.02], [-80.33, 0.05], [-80.38, 0.25]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "san-vicente",
+        "nombre": "San Vicente",
+        "poblacion": 30000,
+        "centro": [-80.3939, 0.6294],
+        "area_km2": 707.2,
+        "vecinos": ["jama", "sucre"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.48, 0.72], [-80.38, 0.25], [-80.33, 0.05], [-80.43, 0.55], [-80.48, 0.72]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sucre",
+        "nombre": "Sucre",
+        "poblacion": 60000,
+        "centro": [-80.4294, 1.2789],
+        "area_km2": 757.3,
+        "vecinos": ["san-vicente", "tosagua"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.52, 1.35], [-80.43, 0.55], [-80.33, 0.05], [-80.40, 1.25], [-80.52, 1.35]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "tosagua",
+        "nombre": "Tosagua",
+        "poblacion": 45000,
+        "centro": [-80.2517, -0.7822],
+        "area_km2": 377.4,
+        "vecinos": ["sucre", "chone", "rocafuerte"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.35, -0.70], [-80.15, -0.72], [-80.12, -0.88], [-80.32, -0.86], [-80.35, -0.70]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rocafuerte",
+        "nombre": "Rocafuerte",
+        "poblacion": 35000,
+        "centro": [-80.4486, -0.9233],
+        "area_km2": 260.0,
+        "vecinos": ["tosagua", "chone", "portoviejo"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.50, -0.88], [-80.40, -0.92], [-80.35, -0.98], [-80.45, -0.95], [-80.50, -0.88]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "junin",
+        "nombre": "Junín",
+        "poblacion": 22000,
+        "centro": [-80.2181, -0.9494],
+        "area_km2": 257.7,
+        "vecinos": ["chone", "portoviejo", "bolivar"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.28, -0.90], [-80.18, -0.92], [-80.15, -1.00], [-80.25, -0.98], [-80.28, -0.90]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "bolivar",
+        "nombre": "Bolívar",
+        "poblacion": 42000,
+        "centro": [-80.4267, -1.2350],
+        "area_km2": 619.0,
+        "vecinos": ["junin", "pichincha", "chone"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.10, -0.85], [-79.85, -0.78], [-79.90, -1.15], [-80.15, -1.20], [-80.10, -0.85]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pichincha",
+        "nombre": "Pichincha",
+        "poblacion": 32000,
+        "centro": [-79.9753, -0.3858],
+        "area_km2": 434.4,
+        "vecinos": ["bolivar", "el-carmen"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.05, -0.30], [-79.90, -0.32], [-79.88, -0.45], [-80.03, -0.43], [-80.05, -0.30]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "flavio-alfaro",
+        "nombre": "Flavio Alfaro",
+        "poblacion": 30000,
+        "centro": [-79.6547, -0.1572],
+        "area_km2": 916.0,
+        "vecinos": ["pedernales", "el-carmen", "chone"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-79.80, -0.05], [-79.55, -0.08], [-79.50, -0.25], [-79.75, -0.22], [-79.80, -0.05]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "santa-ana",
+        "nombre": "Santa Ana",
+        "poblacion": 50000,
+        "centro": [-80.3678, -1.2067],
+        "area_km2": 967.3,
+        "vecinos": ["portoviejo", "24-de-mayo"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.45, -1.15], [-80.30, -1.12], [-80.28, -1.28], [-80.43, -1.25], [-80.45, -1.15]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "24-de-mayo",
+        "nombre": "24 de Mayo",
+        "poblacion": 30000,
+        "centro": [-80.3658, -1.4303],
+        "area_km2": 499.1,
+        "vecinos": ["santa-ana", "portoviejo", "jipijapa"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.43, -1.25], [-80.28, -1.28], [-80.30, -1.45], [-80.45, -1.42], [-80.43, -1.25]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "puerto-lopez",
+        "nombre": "Puerto López",
+        "poblacion": 22000,
+        "centro": [-80.8117, -1.5544],
+        "area_km2": 431.0,
+        "vecinos": ["jipijapa"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.90, -1.45], [-80.75, -1.48], [-80.72, -1.65], [-80.87, -1.62], [-80.90, -1.45]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "pajan",
+        "nombre": "Paján",
+        "poblacion": 40000,
+        "centro": [-80.4256, -1.5650],
+        "area_km2": 1086.9,
+        "vecinos": ["jipijapa"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.55, -1.48], [-80.35, -1.50], [-80.32, -1.68], [-80.52, -1.65], [-80.55, -1.48]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "olmedo",
+        "nombre": "Olmedo",
+        "poblacion": 12000,
+        "centro": [-80.2394, -1.3922],
+        "area_km2": 185.3,
+        "vecinos": ["santa-ana"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-80.28, -1.35], [-80.20, -1.37], [-80.18, -1.42], [-80.26, -1.40], [-80.28, -1.35]
+        ]]
+      }
+    }
+  ]
+}
