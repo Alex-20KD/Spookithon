@@ -100,6 +100,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     map.on("load", () => {
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("mask", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("contagios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("manta", { type: "geojson", data: "/geojson/manta_cabecera_cantonal.geojson" });
       map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -123,6 +124,17 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
           ],
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 30],
           "heatmap-opacity": 0.7,
+        },
+      });
+
+      // Máscara para ocultar heatmap fuera del territorio de Manta.
+      map.addLayer({
+        id: "mask-fill",
+        type: "fill",
+        source: "mask",
+        paint: {
+          "fill-color": "#080D13",
+          "fill-opacity": 1,
         },
       });
 
@@ -282,6 +294,30 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       type: "FeatureCollection",
       features: contagiosFeatures,
     });
+
+    // Máscara invertida de Manta.
+    fetch("/geojson/manta_cabecera_cantonal.geojson")
+      .then((r) => r.json())
+      .then((g) => {
+        const mantaCoords = g.features?.[0]?.geometry?.coordinates;
+        if (!mantaCoords) return;
+        const maskFeature = {
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: [
+              [[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]],
+              ...mantaCoords,
+            ],
+          },
+          properties: {},
+        };
+        (map.getSource("mask") as maplibregl.GeoJSONSource)?.setData({
+          type: "FeatureCollection",
+          features: [maskFeature],
+        });
+      })
+      .catch(() => {});
 
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
       type: "Feature" as const,
