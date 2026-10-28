@@ -26,7 +26,7 @@ import asyncio
 import hashlib
 import json
 import multiprocessing as mp
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from typing import Any
 
 from simulador.params import Params
@@ -63,35 +63,49 @@ def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int, ev
 class Ejecutor:
     """Coordina el pool de procesos, el semáforo y la caché."""
 
-    def __init__(self, max_simulaciones: int, max_workers: int, tam_cache: int = 64):
+    def __init__(self, max_simulaciones: int, max_workers: int, tam_cache: int = 64,
+                 modo: str = "procesos"):
         self._max_simulaciones = max_simulaciones
         self._max_workers = max(1, max_workers)
-        self._pool: ProcessPoolExecutor | None = None
+        # "procesos" (default) o "hilos". En contenedores pequeños (p. ej.
+        # 0.25 vCPU en ECS) el pool de procesos con forkserver puede romperse;
+        # el de hilos es robusto y da el mismo resultado (la simulación es
+        # determinista por índice).
+        self._modo = modo if modo in ("procesos", "hilos") else "procesos"
+        self._pool: ProcessPoolExecutor | ThreadPoolExecutor | None = None
         # Semáforo que cuenta "simulaciones completas en curso" (no corridas).
         self._semaforo = asyncio.Semaphore(max_simulaciones)
         self._en_curso = 0
         self._cache: "_CacheLRU" = _CacheLRU(tam_cache)
 
     def iniciar(self) -> None:
-        if self._pool is None:
-            # El servidor es multi-hilo (uvicorn). Hacer fork() de un proceso
-            # con varios hilos puede provocar deadlocks, así que preferimos
-            # 'forkserver' (arranca procesos limpios desde un servidor de forks)
-            # y, si no está disponible, caemos a 'fork' y luego al contexto por
-            # defecto. 'forkserver'/'spawn' re-importan el módulo del worker,
-            # por eso _worker_corrida es una función a nivel de módulo.
-            contexto = None
-            for metodo in ("forkserver", "fork"):
-                try:
-                    contexto = mp.get_context(metodo)
-                    break
-                except ValueError:  # pragma: no cover - método no disponible
-                    contexto = None
-            if contexto is None:  # pragma: no cover
-                contexto = mp.get_context()
-            self._pool = ProcessPoolExecutor(
-                max_workers=self._max_workers, mp_context=contexto
-            )
+        if self._pool is not None:
+            return
+
+        if self._modo == "hilos":
+            # Hilos: no hace fork ni re-importa módulos -> estable en contenedores
+            # con poca CPU. No hay mp_context.
+            self._pool = ThreadPoolExecutor(max_workers=self._max_workers)
+            return
+
+        # El servidor es multi-hilo (uvicorn). Hacer fork() de un proceso
+        # con varios hilos puede provocar deadlocks, así que preferimos
+        # 'forkserver' (arranca procesos limpios desde un servidor de forks)
+        # y, si no está disponible, caemos a 'fork' y luego al contexto por
+        # defecto. 'forkserver'/'spawn' re-importan el módulo del worker,
+        # por eso _worker_corrida es una función a nivel de módulo.
+        contexto = None
+        for metodo in ("forkserver", "fork"):
+            try:
+                contexto = mp.get_context(metodo)
+                break
+            except ValueError:  # pragma: no cover - método no disponible
+                contexto = None
+        if contexto is None:  # pragma: no cover
+            contexto = mp.get_context()
+        self._pool = ProcessPoolExecutor(
+            max_workers=self._max_workers, mp_context=contexto
+        )
 
     def cerrar(self) -> None:
         if self._pool is not None:

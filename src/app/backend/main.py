@@ -65,6 +65,7 @@ def crear_app(config=None) -> FastAPI:
     app.state.ejecutor = Ejecutor(
         max_simulaciones=cfg.max_simulaciones,
         max_workers=cfg.workers_efectivos,
+        modo=cfg.ejecutor_modo,
     )
 
     # --- CORS restringido (nunca "*") ---
