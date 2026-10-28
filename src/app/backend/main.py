@@ -327,6 +327,7 @@ def _armar_trayectoria(resumen: dict, params: Params, cfg) -> dict:
                 "lugares_cerrados": p["global"].get("lugares_cerrados", 0),
                 "movimientos": p.get("movimientos", []),
                 "nuevos_focos": p.get("nuevos_focos", []),
+                "contagios_por_lugar": p.get("contagios_por_lugar", []),
                 "eventos": p.get("eventos", []),
             }
             for p in resumen["trayectoria"]

@@ -65,9 +65,10 @@ interface Props {
   dia?: number;
   movimientos?: { origen: string; destino: string; cantidad: number }[];
   brotes?: Brote[];
+  contagiosPorLugar?: { lugar_id: number; lng: number; lat: number; nuevos: number }[];
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -110,27 +111,29 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("contagios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("manta", { type: "geojson", data: "/geojson/manta_cabecera_cantonal.geojson" });
       map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
-      // Heatmap de contagios (agregado por barrio).
+      // Heatmap de contagios por lugar.
       map.addLayer({
-        id: "barrios-heat",
+        id: "contagios-heat",
         type: "heatmap",
-        source: "barrios",
+        source: "contagios",
         paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "ratio"], 0, 0, 1, 1],
+          "heatmap-weight": ["interpolate", ["linear"], ["get", "nuevos"], 0, 0, 10, 1],
           "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 14, 3],
           "heatmap-color": [
             "interpolate", ["linear"], ["heatmap-density"],
             0, "rgba(0,0,0,0)",
             0.2, "#38E89A",
-            0.4, "#FF7A45",
-            0.6, "#FF4D5A",
+            0.4, "#F2C94C",
+            0.6, "#FF7A45",
+            0.8, "#FF4D5A",
             1, "#8B1E2D",
           ],
-          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 40],
-          "heatmap-opacity": 0.55,
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 14, 30],
+          "heatmap-opacity": 0.7,
         },
       });
 
@@ -298,6 +301,16 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features,
     });
 
+    const contagiosFeatures = (contagiosPorLugar ?? []).map((c) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+      properties: { nuevos: c.nuevos },
+    }));
+    (map.getSource("contagios") as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: contagiosFeatures,
+    });
+
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
       type: "Feature" as const,
       geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
@@ -351,7 +364,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features: eventosFeatures as any,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, barrios, catalogo, movimientos, brotes]);
+  }, [mapLoaded, barrios, catalogo, movimientos, brotes, contagiosPorLugar]);
 
   const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
     const map = mapRef.current;

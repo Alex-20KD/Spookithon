@@ -70,6 +70,7 @@ class Red:
     )
     # Vecinos geográficos de cada barrio (índices de posición), para movilidad.
     barrios_vecinos: list[list[int]] = field(default_factory=list)
+    coords_lugar: list[tuple[float, float]] = field(default_factory=list)
 
     # --- Consultas útiles ---
 
@@ -224,6 +225,14 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         [idx_barrio[bid] for bid in barrios_ids], dtype=np.int64
     )
 
+    # Coordenadas de cada lugar (para trazabilidad espacial).
+    coords_lugar: list[tuple[float, float]] = [(-80.72, -0.95)] * len(ids_lugar)
+    for b in barrios:
+        coords_lugar[idx_barrio[b["id"]]] = (float(b["lng"]), float(b["lat"]))
+    for i, lid in enumerate(ids_lugar):
+        if coords_lugar[i] == (-80.72, -0.95):
+            coords_lugar[i] = (-80.72 + (i % 5) * 0.002, -0.95 + (i % 7) * 0.002)
+
     # Vecinos geográficos (3 más cercanos por distancia euclidiana en lat/lng).
     n_barrios = len(barrios)
     vecinos: list[list[int]] = [[] for _ in range(n_barrios)]
@@ -250,4 +259,5 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         barrios_ids=barrios_ids,
         barrios_lugar_idx=barrios_lugar_idx,
         barrios_vecinos=vecinos,
+        coords_lugar=coords_lugar,
     )

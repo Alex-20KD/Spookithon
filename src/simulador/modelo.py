@@ -127,6 +127,7 @@ class Simulacion:
         n_barrios = len(red.barrios_ids)
         self._n_barrios = n_barrios
         self._pos_barrio = np.zeros(red.n_personas, dtype=np.int64)
+        self._lugares_contagio_hoy: list[int] = []
         for pos, lugar_idx in enumerate(red.barrios_lugar_idx):
             self._pos_barrio[red.barrio_persona == lugar_idx] = pos
         self._ids_barrio = list(red.barrios_ids)
@@ -252,6 +253,21 @@ class Simulacion:
         for ev in self._eventos_por_dia.get(dia, []):
             eventos.append({"dia": dia, "tipo": ev.get("tipo", "evento"), "titulo": ev.get("nombre", ev.get("tipo", "evento")), "intensidad": ev.get("intensidad")})
 
+        # Contagios por lugar (agregados).
+        conteo_lugar: dict[int, int] = {}
+        for lid in self._lugares_contagio_hoy:
+            conteo_lugar[lid] = conteo_lugar.get(lid, 0) + 1
+
+        contagios_por_lugar = []
+        for lid, cnt in conteo_lugar.items():
+            coord = self.red.coords_lugar[lid] if lid < len(self.red.coords_lugar) else (-80.72, -0.95)
+            contagios_por_lugar.append({
+                "lugar_id": int(lid),
+                "lng": float(coord[0]),
+                "lat": float(coord[1]),
+                "nuevos": int(cnt),
+            })
+
         nuevos_focos = []
         for pbarrio in por_barrio:
             bid = pbarrio["barrio_id"]
@@ -275,6 +291,7 @@ class Simulacion:
             "por_barrio": por_barrio,
             "movimientos": list(self._movimientos_hoy),
             "nuevos_focos": nuevos_focos,
+            "contagios_por_lugar": contagios_por_lugar,
             "eventos": eventos,
         })
 
@@ -503,6 +520,20 @@ class Simulacion:
         sanos = self.estado == SANO
         sorteo = self.rng.random(self.red.n_personas)
         nuevos = np.where(sanos & (sorteo < prob_inf))[0]
+
+        # Atribuir lugar de contagio para cada nuevo infectado.
+        self._lugares_contagio_hoy = []
+        if nuevos.size > 0 and idx.size > 0:
+            for persona in nuevos:
+                mask = per_p == persona
+                if not np.any(mask):
+                    continue
+                lugares_persona = lug_p[mask]
+                if lugares_persona.size == 0:
+                    continue
+                lambdas = lambda_lugar[lugares_persona]
+                best = lugares_persona[int(np.argmax(lambdas))]
+                self._lugares_contagio_hoy.append(int(best))
 
         # Atribución fraccional de infector (opcional, sin azar nuevo).
         if self.atribuir and nuevos.size > 0:

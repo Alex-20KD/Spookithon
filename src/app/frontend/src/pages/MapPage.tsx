@@ -226,6 +226,7 @@ export default function MapPage() {
               dia={dia}
               movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
               brotes={brotes}
+              contagiosPorLugar={trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? []}
             />
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
