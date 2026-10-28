@@ -227,7 +227,7 @@ export default function MapPage() {
         <div>
         <div>
           {mapa && (
-            <div className="map-container" style={{ height: "70vh" }}>
+            <div className="map-container" style={{ height: 620 }}>
               <EpidemicMap
                 barrios={mapa.barrios}
                 catalogo={catalogo}

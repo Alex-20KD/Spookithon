@@ -466,7 +466,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         </div>
       )}
       <div style={{ position: "relative" }}>
-        <div ref={containerRef} className="map-container" style={{ height: "100%", width: "100%" }} />
+        <div ref={containerRef} className="map-container" style={{ height: 620, width: "100%" }} />
         <div
           style={{
             position: "absolute",
