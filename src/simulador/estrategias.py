@@ -220,6 +220,24 @@ class ControlEsporas:
         return Acciones()
 
 
+def por_nombre(nombre: str):
+    mapping = {
+        "Nada": Nada,
+        "Azar": Azar,
+        "Centralidad": Centralidad,
+        "CierresMasCentralidad": CierresMasCentralidad,
+        "Anillo": Anillo,
+        "BloqueoEmergencia": BloqueoEmergencia,
+        "VigilanciaIntensiva": VigilanciaIntensiva,
+        "EvacuacionPreventiva": EvacuacionPreventiva,
+        "AislamientoFocalizado": AislamientoFocalizado,
+        "RefuerzoContencion": RefuerzoContencion,
+        "ControlEsporas": ControlEsporas,
+    }
+    if nombre not in mapping:
+        raise ValueError(f"Estrategia desconocida: {nombre}")
+    return mapping[nombre]()
+
 def todas() -> list:
     """Devuelve una instancia de cada una de las cinco estrategias."""
     return [Nada(), Azar(), Centralidad(), CierresMasCentralidad(), Anillo()]
