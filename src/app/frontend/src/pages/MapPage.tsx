@@ -57,10 +57,6 @@ export default function MapPage() {
     { dia: 30, estrategia: "BloqueoEmergencia", duracion: 10 },
   ]);
 
-  const contagiosDia = trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? [];
-  const totalVar = contagiosDia.reduce((a, c) => a + (variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis), 0);
-  const maxVar = contagiosDia.reduce((a, c) => Math.max(a, variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis), 0);
-  const focosVar = contagiosDia.filter((c) => (variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis) > 0).length;
   const cargaIniciadaRef = useRef(false);
 
   const timerRef = useRef<number | null>(null);
@@ -104,7 +100,6 @@ export default function MapPage() {
     };
   }, [reproduciendo, velocidad]);
 
-  // Cargar trayectoria inicial cuando hay simulación y no hay trayectoria.
   useEffect(() => {
     if (resultado && !trayectoria && !cargandoTray && paramsEjecutados && !cargaIniciadaRef.current) {
       cargaIniciadaRef.current = true;
@@ -124,12 +119,9 @@ export default function MapPage() {
     }
   };
 
-  // Barrios para el día seleccionado.
   let barriosDia: BarrioMapa[] = [];
-  let diaGlobal = trayectoria?.serie_global?.[dia] ?? null;
 
   if (trayectoria) {
-
     barriosDia = trayectoria.serie_por_barrio
       .filter((b) => b.primer_dia_infeccion == null || b.primer_dia_infeccion <= dia)
       .map((b) => {
@@ -152,7 +144,7 @@ export default function MapPage() {
   const cabecera = (
     <PageTitle
       title="Mapa Epidemiológico"
-      subtitle="Evolución diaria por barrio según la trayectoria seleccionada"
+      subtitle="Centro de operaciones epidemiológicas"
       right={<Pill color="orange">DATOS SIMULADOS</Pill>}
     />
   );
@@ -203,9 +195,25 @@ export default function MapPage() {
     .filter((b) => b.infectados_media != null)
     .sort((a, b) => (b.infectados_media as number) - (a.infectados_media as number));
 
+  const zombisActivos = trayectoria?.serie_global?.[dia]?.ZOMBI ?? 0;
+  const nuevosContagios = trayectoria?.serie_global?.[dia]?.nuevos_contagios ?? 0;
+  const infectadosAcum = barriosDia.reduce((a, b) => a + (b.infectados_media ?? 0), 0);
+  const estrategiasActivas = intervenciones
+    .filter((iv) => iv.dia <= dia && iv.dia + iv.duracion >= dia)
+    .map((iv) => iv.estrategia);
+
   return (
     <div>
       {cabecera}
+
+      {/* Barra de indicadores */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 12 }}>
+        <Card><div style={{ fontSize: 12, color: "var(--muted)" }}>Día</div><div style={{ fontSize: 18, fontWeight: 700 }}>{dia} / {paramsEjecutados?.dias ?? params.dias}</div></Card>
+        <Card><div style={{ fontSize: 12, color: "var(--muted)" }}>Zombis activos</div><div style={{ fontSize: 18, fontWeight: 700 }}>{num(zombisActivos)}</div></Card>
+        <Card><div style={{ fontSize: 12, color: "var(--muted)" }}>Nuevos contagios</div><div style={{ fontSize: 18, fontWeight: 700 }}>{num(nuevosContagios)}</div></Card>
+        <Card><div style={{ fontSize: 12, color: "var(--muted)" }}>Infectados acum.</div><div style={{ fontSize: 18, fontWeight: 700 }}>{num(infectadosAcum)}</div></Card>
+        <Card><div style={{ fontSize: 12, color: "var(--muted)" }}>Estrategias activas</div><div style={{ fontSize: 14, fontWeight: 700 }}>{estrategiasActivas.length ? estrategiasActivas.join(", ") : estrategiaSeleccionada}</div></Card>
+      </div>
 
       {paramsModificados && (
         <Card>
@@ -215,58 +223,37 @@ export default function MapPage() {
         </Card>
       )}
 
-      <div style={{ height: 12 }} />
-
-      <Card title="Estrategia de la trayectoria">
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <select
-            value={estrategiaSeleccionada}
-            onChange={(e) => cambiarEstrategia(e.target.value)}
-            style={selectStyle}
-          >
-            {ESTRATEGIAS.map((e) => (
-              <option key={e} value={e}>
-                {NOMBRES[e]}
-              </option>
-            ))}
-          </select>
-          {cargandoTray && <span className="loading-inline"><span className="spinner" /> Cargando trayectoria…</span>}
-        </div>
-      </Card>
-
-      <div style={{ height: 12 }} />
-
-      <div className="split">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 12 }}>
         <div>
           {mapa && (
-            <EpidemicMap
-              barrios={mapa.barrios}
-              catalogo={catalogo}
-              dia={dia}
-              movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
-              brotes={brotes}
-              contagiosPorLugar={trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? []}
-              showHeatmap={showHeatmap}
-              showMovimientos={showMovimientos}
-              showEventos={showEventos}
-              variable={variable}
-            />
+            <div className="map-container" style={{ height: "70vh" }}>
+              <EpidemicMap
+                barrios={mapa.barrios}
+                catalogo={catalogo}
+                dia={dia}
+                movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
+                brotes={brotes}
+                contagiosPorLugar={trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? []}
+                showHeatmap={showHeatmap}
+                showMovimientos={showMovimientos}
+                showEventos={showEventos}
+                variable={variable}
+              />
+            </div>
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
             {trayectoria
               ? "La evolución por día proviene de una trayectoria real del simulador (una corrida determinista)."
               : "Modo agregado: ejecuta una simulación para obtener una trayectoria diaria."}
           </div>
-        </div>
 
-        <div className="map-side">
           <Card title="Controles de reproducción">
             <div className="sim-controls">
               <button className="btn primary" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setReproduciendo((v) => !v)}>
                 {reproduciendo ? "Pausar" : "Reproducir"}
               </button>
               <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.min(params.dias, dia + 1))}>
-                Avanzar día
+                Avanzar
               </button>
               <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.max(0, dia - 1))}>
                 Retroceder
@@ -275,30 +262,11 @@ export default function MapPage() {
                 Reiniciar
               </button>
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
-              Día actual: {dia} / {paramsEjecutados?.dias ?? params.dias}
-            </div>
             <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
               <label><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /> Heatmap</label>
               <label><input type="checkbox" checked={showMovimientos} onChange={(e) => setShowMovimientos(e.target.checked)} /> Movimientos</label>
               <label><input type="checkbox" checked={showEventos} onChange={(e) => setShowEventos(e.target.checked)} /> Eventos</label>
             </div>
-            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
-              <label>
-                <span>Variable</span>
-              </label>
-              <select value={variable} onChange={(e) => setVariable(e.target.value as any)} style={selectStyle}>
-                <option value="nuevos">Nuevos contagios</option>
-                <option value="acumulados">Infectados acumulados</option>
-                <option value="zombis">Zombis activos</option>
-              </select>
-            </div>
-          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", display: "grid", gap: 2 }}>
-            <div>Variable: <strong>{variable}</strong></div>
-            <div>Total geolocalizado: <strong>{num(totalVar)}</strong></div>
-            <div>Valor maximo por foco: <strong>{num(maxVar)}</strong></div>
-            <div>Focos con valor &gt; 0: <strong>{focosVar}</strong></div>
-          </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>
                 <span>Línea temporal</span>
@@ -327,22 +295,43 @@ export default function MapPage() {
                 onChange={(e) => setVelocidad(Number(e.target.value))}
               />
             </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Variable</span>
+              </label>
+              <select value={variable} onChange={(e) => setVariable(e.target.value as any)} style={selectStyle}>
+                <option value="nuevos">Nuevos contagios</option>
+                <option value="acumulados">Infectados acumulados</option>
+                <option value="zombis">Zombis activos</option>
+              </select>
+            </div>
           </Card>
+        </div>
 
-          {diaGlobal && (
-            <Card title="Estado del día">
-              <div style={{ fontSize: 13, display: "grid", gap: 4 }}>
-                <div>Zombis activos: <strong>{num(diaGlobal.ZOMBI)}</strong></div>
-                <div>Nuevos contagios: <strong>{num(diaGlobal.nuevos_contagios)}</strong></div>
-                <div>Inmunes: <strong>{num(diaGlobal.INMUNE)}</strong></div>
-                <div>Infectados acumulados (día): <strong>{num(barriosDia.reduce((a, b) => a + (b.infectados_media ?? 0), 0))}</strong></div>
-              </div>
-            </Card>
-          )}
-
+        <div className="map-side">
           <Card title="Centro de decisiones">
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 12, color: "var(--muted)" }}>Escenario de referencia</label>
+              <select
+                value={estrategiaSeleccionada}
+                onChange={(e) => cambiarEstrategia(e.target.value)}
+                style={selectStyle}
+              >
+                {ESTRATEGIAS.map((e) => (
+                  <option key={e} value={e}>
+                    {NOMBRES[e]}
+                  </option>
+                ))}
+              </select>
+              {cargandoTray && <span className="loading-inline"><span className="spinner" /> Cargando…</span>}
+            </div>
+
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+              Estrategias activas: {estrategiasActivas.length ? estrategiasActivas.join(", ") : estrategiaSeleccionada}
+            </div>
+
             {intervenciones.map((iv, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
+              <div key={idx} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 6, padding: 6, border: "1px solid var(--border)", borderRadius: 8 }}>
                 <span style={{ minWidth: 40, fontSize: 12 }}>Día {iv.dia}</span>
                 <select
                   value={iv.estrategia}
@@ -351,7 +340,7 @@ export default function MapPage() {
                     n[idx].estrategia = e.target.value;
                     setIntervenciones(n);
                   }}
-                  style={selectStyle}
+                  style={{ ...selectStyle, width: 160 }}
                 >
                   <option value="CierresMasCentralidad">Cierres + centralidad</option>
                   <option value="BloqueoEmergencia">Bloqueo de emergencia</option>
@@ -403,6 +392,7 @@ export default function MapPage() {
               </button>
             </div>
           </Card>
+
           <Card title="Nivel de riesgo">
             <div className="legend">
               {NIVELES.map((n) => (
@@ -442,7 +432,6 @@ export default function MapPage() {
     </div>
   );
 }
-
 const selectStyle: React.CSSProperties = {
   width: "100%",
   padding: 8,
