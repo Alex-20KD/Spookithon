@@ -9,6 +9,7 @@ import React, {
 import {
   compararEstrategias,
   obtenerParametros,
+  obtenerTrayectoria,
   ApiError,
 } from "../services/apiClient";
 import type {
@@ -17,6 +18,9 @@ import type {
   LugarInicio,
   ParametrosResponse,
 } from "../types/api";
+import type { TrayectoriaRequest, TrayectoriaResponse } from "../types/trayectoria";
+import type { Brote } from "../types/brotes";
+import { clampDia } from "../utils/epidemiologia";
 
 /**
  * Parámetros editables que la interfaz envía al backend. Usan los MISMOS
@@ -51,6 +55,13 @@ const PARAMS_FALLBACK: ParametrosEditables = {
 interface SimulationContextValue {
   /** Parámetros actuales del formulario. */
   params: ParametrosEditables;
+  /** Vía de transmisión seleccionada. */
+  viaTransmision: string;
+  setViaTransmision: (v: string) => void;
+
+  /** Brotes programados. */
+  brotes: Brote[];
+  setBrotes: (b: Brote[]) => void;
   updateParam: <K extends keyof ParametrosEditables>(
     key: K,
     value: ParametrosEditables[K],
@@ -63,16 +74,38 @@ interface SimulationContextValue {
   /** Último resultado de POST /comparar. */
   resultado: CompararResponse | null;
 
+  /** Eventos de brote sorpresa activos. */
+  eventos: CompararRequest["eventos"];
+  setEventos: (e: CompararRequest["eventos"]) => void;
+
+  /** Parámetros con los que se ejecutó la última simulación. */
+  paramsEjecutados: ParametrosEditables | null;
+
+  /** Trayectoria determinista cargada. */
+  trayectoria: TrayectoriaResponse | null;
+
+  /** Estrategia seleccionada para la trayectoria. */
+  estrategiaSeleccionada: string;
+  setEstrategiaSeleccionada: (e: string) => void;
+
+  /** Indica si los parámetros actuales difieren de los ejecutados. */
+  paramsModificados: boolean;
+
   /** Estado de la petición en curso. */
   cargando: boolean;
   error: string | null;
 
-  /** Ejecuta POST /comparar con los parámetros actuales. */
-  comparar: () => Promise<void>;
+  /** Ejecuta POST /comparar con los parámetros actuales. Devuelve el resultado o null si falla. */
+  comparar: (eventosOverride?: CompararRequest["eventos"]) => Promise<CompararResponse | null>;
+
+  /** Carga una trayectoria determinista para la estrategia indicada. */
+  cargarTrayectoria: (estrategia?: string) => Promise<void>;
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
-  setDia: (d: number) => void;
+  /** Último día válido: horizonte de la trayectoria cargada (o del escenario ejecutado). */
+  maxDia: number;
+  setDia: (d: number | ((prev: number) => number)) => void;
 }
 
 const SimulationContext = createContext<SimulationContextValue | undefined>(
@@ -108,10 +141,29 @@ function construirDefaults(meta: ParametrosResponse | null): ParametrosEditables
   };
 }
 
+function brotesAEventos(brotes: Brote[]): CompararRequest["eventos"] {
+  return brotes
+    .filter((b) => b.activo)
+    .map((b) => ({
+      tipo: b.tipo,
+      dia: b.dia,
+      barrio_id: b.barrio_id,
+      intensidad: b.intensidad,
+      duracion: b.duracion,
+      nombre: b.tipo,
+    }));
+}
+
 export function SimulationProvider({ children }: { children: React.ReactNode }) {
   const [params, setParams] = useState<ParametrosEditables>(PARAMS_FALLBACK);
+  const [viaTransmision, setViaTransmision] = useState<string>("mordidas");
+  const [brotes, setBrotes] = useState<Brote[]>([]);
   const [meta, setMeta] = useState<ParametrosResponse | null>(null);
   const [resultado, setResultado] = useState<CompararResponse | null>(null);
+  const [eventos, setEventos] = useState<CompararRequest["eventos"]>(null);
+  const [paramsEjecutados, setParamsEjecutados] = useState<ParametrosEditables | null>(null);
+  const [trayectoria, setTrayectoria] = useState<TrayectoriaResponse | null>(null);
+  const [estrategiaSeleccionada, setEstrategiaSeleccionada] = useState<string>("Nada");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dia, setDiaState] = useState(0);
@@ -133,13 +185,52 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setParams(construirDefaults(meta));
   };
 
-  const setDia = (d: number) => {
-    const max = params.dias;
-    if (Number.isNaN(d)) return setDiaState(0);
-    setDiaState(Math.max(0, Math.min(max, Math.round(d))));
+  const cargarTrayectoria = async (estrategia?: string) => {
+    const baseParams = paramsEjecutados ?? params;
+    const estr = estrategia ?? estrategiaSeleccionada;
+    setCargando(true);
+    setError(null);
+    try {
+      const ev = brotes.length > 0 ? (brotesAEventos(brotes) ?? undefined) : undefined;
+      const cuerpo: TrayectoriaRequest = {
+        beta: baseParams.beta,
+        dosis_dia: baseParams.dosis_dia,
+        eficacia_vacuna: baseParams.eficacia_vacuna,
+        lugar_inicio: baseParams.lugar_inicio,
+        dias_detectar: baseParams.dias_detectar,
+        infect_portador: baseParams.infect_portador,
+        dias: baseParams.dias,
+        semilla: baseParams.semilla,
+        movilidad_zombie: 0.05,
+        via_transmision: viaTransmision,
+        eventos: ev,
+        estrategia: estr,
+      };
+      const res = await obtenerTrayectoria(cuerpo);
+      setTrayectoria(res);
+      setDiaState((prev) => clampDia(prev, res.dias));
+      setEstrategiaSeleccionada(estr);
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Ocurrió un error inesperado al cargar la trayectoria.",
+      );
+    } finally {
+      setCargando(false);
+    }
   };
 
-  const comparar = async () => {
+  const maxDia = trayectoria?.dias ?? paramsEjecutados?.dias ?? params.dias;
+
+  const setDia = (d: number | ((prev: number) => number)) => {
+    setDiaState((prev) => {
+      const next = typeof d === "function" ? (d as (p: number) => number)(prev) : d;
+      return clampDia(Number.isNaN(next) ? 0 : next, maxDia);
+    });
+  };
+
+  const comparar = async (eventosOverride?: CompararRequest["eventos"]): Promise<CompararResponse | null> => {
     // Cancela una comparación anterior aún en vuelo.
     comparaEnCurso.current?.abort();
     const ctrl = new AbortController();
@@ -148,17 +239,22 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setCargando(true);
     setError(null);
     try {
-      const cuerpo: CompararRequest = { ...params };
+      const ev = eventosOverride !== undefined ? eventosOverride : (brotes.length > 0 ? brotesAEventos(brotes) : eventos);
+      const cuerpo: CompararRequest = { ...params, via_transmision: viaTransmision, eventos: ev };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
+      setParamsEjecutados({ ...params });
+      setTrayectoria(null);
       setDiaState(0);
+      return res;
     } catch (e) {
-      if (ctrl.signal.aborted) return; // cancelada a propósito
+      if (ctrl.signal.aborted) return null; // cancelada a propósito
       setError(
         e instanceof ApiError
           ? e.message
           : "Ocurrió un error inesperado al comparar estrategias.",
       );
+      return null;
     } finally {
       if (!ctrl.signal.aborted) setCargando(false);
     }
@@ -179,20 +275,37 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     return () => ctrl.abort();
   }, []);
 
+  const paramsModificados =
+    paramsEjecutados !== null &&
+    JSON.stringify(params) !== JSON.stringify(paramsEjecutados);
+
   const value = useMemo(
     () => ({
       params,
+      viaTransmision,
+      setViaTransmision,
+      brotes,
+      setBrotes,
       updateParam,
       restaurarDefaults,
       meta,
       resultado,
+      eventos,
+      setEventos,
+      paramsEjecutados,
+      trayectoria,
+      estrategiaSeleccionada,
+      setEstrategiaSeleccionada,
+      paramsModificados,
       cargando,
       error,
       comparar,
+      cargarTrayectoria,
       dia,
+      maxDia,
       setDia,
     }),
-    [params, meta, resultado, cargando, error, dia],
+    [params, meta, resultado, eventos, viaTransmision, brotes, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia, maxDia],
   );
 
   return (

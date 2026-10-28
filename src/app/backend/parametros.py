@@ -57,6 +57,12 @@ def describir_parametros(dias_max: int, n_corridas_max: int) -> dict[str, dict[s
             "maximo": 1.0,
             "descripcion": "Infectividad del portador respecto al zombi (zombi = 1,0).",
         },
+        "movilidad_zombie": {
+            "por_defecto": d.movilidad_zombie,
+            "minimo": 0.0,
+            "maximo": 1.0,
+            "descripcion": "Probabilidad diaria de que un zombi se desplace a un barrio vecino.",
+        },
         "dias": {
             "por_defecto": d.dias,
             "minimo": 7,

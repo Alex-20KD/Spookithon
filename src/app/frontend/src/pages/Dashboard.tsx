@@ -15,6 +15,8 @@ import Card from "../components/ui/Card";
 import MetricCard from "../components/ui/MetricCard";
 import PageTitle from "../components/ui/PageTitle";
 import Pill from "../components/ui/Pill";
+import EventsPanel from "../components/EventsPanel";
+import { nombreAmigable } from "../utils/estrategias";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
 
@@ -24,6 +26,7 @@ export default function Dashboard() {
   const mejor =
     resultado?.estrategias.find((e) => e.nombre === resultado.mejor_estrategia) ?? null;
   const nada = resultado?.estrategias.find((e) => e.nombre === "Nada") ?? null;
+  const azar = resultado?.estrategias.find((e) => e.nombre === "Azar") ?? null;
 
   const curva =
     mejor?.curva_diaria.dias.map((d, i) => ({
@@ -71,7 +74,7 @@ export default function Dashboard() {
       {!cargando && !error && resultado && mejor && (
         <>
           <div className="kpi-row">
-            <MetricCard label="Mejor estrategia" value={resultado.mejor_estrategia} color="green" />
+            <MetricCard label="Mejor estrategia" value={nombreAmigable(resultado.mejor_estrategia)} color="green" />
             <MetricCard label="Infectados (mejor)" value={num(mejor.infectados_media)} sub="promedio" color="red" />
             <MetricCard label="Salvados (mejor)" value={num(mejor.salvados_media)} sub="promedio" color="green" />
             <MetricCard
@@ -80,7 +83,19 @@ export default function Dashboard() {
               sub="infectados 'Nada'"
               color="orange"
             />
+            <MetricCard
+              label="Intervención aleatoria"
+              value={azar ? num(azar.infectados_media) : "—"}
+              sub="infectados 'Azar'"
+              color="blue"
+            />
+          </div>
+          <div style={{ height: 12 }} />
+          <div className="kpi-row">
             <MetricCard label="Corridas" value={resultado.n_corridas} sub={`semilla ${resultado.semilla}`} color="blue" />
+            <MetricCard label="Mejor que 'Nada'" value={mejor ? `${mejor.pct_mejor_que_nada.toFixed(0)}%` : "—"} sub="de corridas" color="green" />
+            <MetricCard label="Mejor que 'Azar'" value={mejor ? `${mejor.pct_mejor_que_azar.toFixed(0)}%` : "—"} sub="de corridas" color="green" />
+            <MetricCard label="R0" value="No provisto" sub="la API no lo devuelve" color="muted" />
           </div>
 
           <div style={{ height: 16 }} />
@@ -122,6 +137,9 @@ export default function Dashboard() {
               </Card>
             </div>
           </div>
+
+          <div style={{ height: 16 }} />
+          <EventsPanel resultado={resultado} />
         </>
       )}
     </div>

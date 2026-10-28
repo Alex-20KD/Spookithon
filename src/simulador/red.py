@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from . import territorio
 from .catalogo import cargar_catalogo
 
 TIPOS_LUGAR = ("hogar", "colegio", "bus", "mercado", "hospital", "barrio")
@@ -68,6 +69,9 @@ class Red:
     barrios_lugar_idx: np.ndarray = field(
         default_factory=lambda: np.empty(0, dtype=np.int64)
     )
+    # Vecinos geográficos de cada barrio (índices de posición), para movilidad.
+    barrios_vecinos: list[list[int]] = field(default_factory=list)
+    coords_lugar: list[tuple[float, float]] = field(default_factory=list)
 
     # --- Consultas útiles ---
 
@@ -222,6 +226,56 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         [idx_barrio[bid] for bid in barrios_ids], dtype=np.int64
     )
 
+    # Coordenadas de cada lugar (para trazabilidad espacial).
+    coords_lugar: list[tuple[float, float]] = [(-80.72, -0.95)] * len(ids_lugar)
+    for b in barrios:
+        coords_lugar[idx_barrio[b["id"]]] = (float(b["lng"]), float(b["lat"]))
+    for e in edificios:
+        for i, lid in enumerate(ids_lugar):
+            if lid == e["id"]:
+                coords_lugar[i] = (float(e["lng"]), float(e["lat"]))
+    # Hogares: asignar al barrio de sus miembros.
+    persona_actual = 0
+    for h, t in enumerate(tamanos):
+        if t > 0:
+            p0 = persona_actual
+            bpos = barrio_persona[p0] if p0 < poblacion else None
+            if bpos is not None and bpos < len(coords_lugar) and coords_lugar[bpos] != (-80.72, -0.95):
+                coords_lugar[idx_hogares[h]] = coords_lugar[bpos]
+        persona_actual += t
+    # Paradas de bus (sin entrada en el catálogo): punto situado entre los
+    # centros de dos sectores distintos, aceptado solo si cae dentro del
+    # territorio oficial (descarta el agua de la bahía). Determinista por semilla.
+    rng2 = np.random.default_rng(semilla + 999)
+    for i, lid in enumerate(ids_lugar):
+        if coords_lugar[i] == (-80.72, -0.95):
+            elegido = None
+            for _ in range(200):
+                a, c = rng2.choice(len(barrios), size=2, replace=False)
+                ba, bc = barrios[int(a)], barrios[int(c)]
+                t = float(rng2.uniform(0.25, 0.75))
+                x = float(ba["lng"]) + t * (float(bc["lng"]) - float(ba["lng"]))
+                y = float(ba["lat"]) + t * (float(bc["lat"]) - float(ba["lat"]))
+                if territorio.dentro(x, y):
+                    elegido = (x, y)
+                    break
+            if elegido is None:
+                elegido = (float(barrios[0]["lng"]), float(barrios[0]["lat"]))
+            coords_lugar[i] = elegido
+
+    # Vecinos geográficos (3 más cercanos por distancia euclidiana en lat/lng).
+    n_barrios = len(barrios)
+    vecinos: list[list[int]] = [[] for _ in range(n_barrios)]
+    for i in range(n_barrios):
+        dists = []
+        for j in range(n_barrios):
+            if i == j:
+                continue
+            d = (barrios[i]["lat"] - barrios[j]["lat"]) ** 2 + (barrios[i]["lng"] - barrios[j]["lng"]) ** 2
+            dists.append((d, j))
+        dists.sort()
+        vecinos[i] = [j for _, j in dists[:3]]
+
     return Red(
         n_personas=poblacion,
         n_lugares=n_lugares,
@@ -234,4 +288,6 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
         centralidad=centralidad,
         barrios_ids=barrios_ids,
         barrios_lugar_idx=barrios_lugar_idx,
+        barrios_vecinos=vecinos,
+        coords_lugar=coords_lugar,
     )

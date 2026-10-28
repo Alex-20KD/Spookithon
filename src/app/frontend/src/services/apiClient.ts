@@ -15,6 +15,7 @@ import type {
   CompararResponse,
   ParametrosResponse,
 } from "../types/api";
+import type { TrayectoriaRequest, TrayectoriaResponse } from "../types/trayectoria";
 
 /** URL base del backend, leída de VITE_API_URL. */
 const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080")
@@ -116,6 +117,18 @@ export function compararEstrategias(
   signal?: AbortSignal,
 ): Promise<CompararResponse> {
   return pedir<CompararResponse>("/comparar", {
+    method: "POST",
+    body: JSON.stringify(cuerpo),
+    signal,
+  });
+}
+
+/** POST /trayectoria — trayectoria determinista por estrategia. */
+export function obtenerTrayectoria(
+  cuerpo: TrayectoriaRequest,
+  signal?: AbortSignal,
+): Promise<TrayectoriaResponse> {
+  return pedir<TrayectoriaResponse>("/trayectoria", {
     method: "POST",
     body: JSON.stringify(cuerpo),
     signal,

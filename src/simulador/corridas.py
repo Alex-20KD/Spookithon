@@ -125,6 +125,7 @@ def correr_una_corrida(
     params: Params,
     indice: int,
     estrategias: list | None = None,
+    eventos: list | None = None,
 ) -> dict[str, tuple[int, np.ndarray, np.ndarray]]:
     """Ejecuta UNA corrida (la ``indice``) para todas las estrategias.
 
@@ -144,7 +145,7 @@ def correr_una_corrida(
     red = construir_red(params.poblacion, semilla)
     salida: dict[str, tuple[int, np.ndarray, np.ndarray]] = {}
     for e in estrategias:
-        sim = Simulacion(params, red, e, semilla=semilla)
+        sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos)
         res = sim.correr()
         salida[e.nombre] = (
             res.infectados_totales,
@@ -222,6 +223,55 @@ def resumir_corridas(
             ),
         )
     return resumen
+
+
+def _estrategia_por_nombre(nombre: str):
+    mapping = {
+        "Nada": _estrategias.Nada,
+        "Azar": _estrategias.Azar,
+        "Centralidad": _estrategias.Centralidad,
+        "CierresMasCentralidad": _estrategias.CierresMasCentralidad,
+        "Anillo": _estrategias.Anillo,
+    }
+    if nombre not in mapping:
+        raise ValueError(f"Estrategia desconocida: {nombre}")
+    return mapping[nombre]()
+
+
+def correr_trayectoria(
+    params: Params,
+    estrategia_nombre: str,
+    semilla: int | None = None,
+    eventos: list | None = None,
+) -> dict:
+    """Ejecuta UNA corrida determinista con registro diario por barrio.
+
+    Devuelve un diccionario serializable con la trayectoria completa.
+    No altera la dinámica ni los resultados agregados.
+    """
+    base = params.semilla if semilla is None else semilla
+    red = construir_red(params.poblacion, base)
+    estrategia = _estrategia_por_nombre(estrategia_nombre)
+    sim = Simulacion(
+        params, red, estrategia, semilla=base, registrar_trayectoria=True, eventos=eventos
+    )
+    res = sim.correr()
+    return {
+        "estrategia": estrategia_nombre,
+        "semilla": base,
+        "dias": params.dias,
+        "trayectoria": res.trayectoria,
+        "infectados_totales": res.infectados_totales,
+        "poblacion_por_barrio": [int(x) for x in sim.poblacion_por_barrio],
+        "barrios_ids": list(red.barrios_ids),
+        "dosis_usadas": res.dosis_usadas,
+        "dias_cierre": res.dias_cierre,
+        "infectados_por_barrio": (
+            res.infectados_por_barrio.tolist()
+            if res.infectados_por_barrio is not None
+            else None
+        ),
+    }
 
 
 def comparar_detallado(

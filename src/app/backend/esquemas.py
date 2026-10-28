@@ -79,6 +79,12 @@ class ParametrosComparar(BaseModel):
         default=50, ge=1,
         description="Número de corridas a promediar (tope configurable, 300 por defecto).",
     )
+    via_transmision: str | None = Field(default=None, description="mordidas, esporas o combinada")
+    beta_espora: float | None = Field(default=None, ge=0.0, le=1.0)
+    eventos: list[dict] | None = Field(
+        default=None,
+        description="Eventos de brote sorpresa opcionales.",
+    )
 
 
 # ----------------------------- Respuestas ------------------------------ #
@@ -164,3 +170,24 @@ class RangoParametro(BaseModel):
         default=None, description="Valores válidos (para parámetros de opción)."
     )
     descripcion: str = Field(description="Explicación corta en español.")
+class ParametrosTrayectoria(BaseModel):
+    """Parametros para obtener una trayectoria determinista (una sola corrida)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    beta: float | None = Field(default=None, gt=0.0, le=1.0)
+    dosis_dia: int | None = Field(default=None, ge=0, le=1000)
+    eficacia_vacuna: float | None = Field(default=None, ge=0.0, le=1.0)
+    lugar_inicio: LugarInicio | None = Field(default=None)
+    dias_detectar: int | None = Field(default=None, ge=1, le=30)
+    infect_portador: float | None = Field(default=None, ge=0.0, le=1.0)
+    dias: int | None = Field(default=None, ge=7)
+    semilla: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    estrategia: Literal["Nada", "Azar", "Centralidad", "CierresMasCentralidad", "Anillo"] = Field(
+        default="Nada",
+        description="Estrategia a simular en la trayectoria.",
+    )
+    movilidad_zombie: float | None = Field(default=None, ge=0.0, le=1.0)
+    via_transmision: str | None = Field(default=None, description="mordidas, esporas o combinada")
+    beta_espora: float | None = Field(default=None, ge=0.0, le=1.0)
+    eventos: list[dict] | None = Field(default=None, description="Eventos de brote sorpresa.")

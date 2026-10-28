@@ -6,6 +6,7 @@ import SimulatorConfig from "./pages/SimulatorConfig";
 import Strategies from "./pages/Strategies";
 import Results from "./pages/Results";
 
+
 export default function App() {
   return (
     <Layout>

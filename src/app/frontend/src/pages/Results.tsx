@@ -16,6 +16,8 @@ import PageTitle from "../components/ui/PageTitle";
 import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
 import MetricCard from "../components/ui/MetricCard";
+import EventsPanel from "../components/EventsPanel";
+import { nombreAmigable } from "../utils/estrategias";
 import type { ResultadoEstrategia } from "../types/api";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
@@ -133,7 +135,7 @@ export default function Results() {
               style={{ padding: "6px 10px", fontSize: 12 }}
               onClick={() => setEstrategiaSel(e.nombre)}
             >
-              {e.nombre}
+              {nombreAmigable(e.nombre)}
             </button>
           ))}
         </div>
@@ -200,7 +202,7 @@ export default function Results() {
                 return (
                   <tr key={e.nombre} style={base ? { color: "var(--muted)" } : undefined}>
                     <td>
-                      {e.nombre}
+                      {nombreAmigable(e.nombre)}
                       {esMejor && " ⭐"}
                       {base && (
                         <Pill color="orange">línea base</Pill>
@@ -238,6 +240,9 @@ export default function Results() {
           {resultado.recomendacion}
         </p>
       </Card>
+
+      <div style={{ height: 16 }} />
+      <EventsPanel resultado={resultado} />
     </div>
   );
 }

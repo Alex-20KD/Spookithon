@@ -32,7 +32,7 @@ from simulador.params import Params
 
 from .configuracion import cargar_configuracion
 from .ejecutor import Ejecutor, ServidorOcupado
-from .esquemas import ParametrosComparar
+from .esquemas import ParametrosComparar, ParametrosTrayectoria
 from .parametros import describir_parametros
 
 
@@ -174,8 +174,24 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
             )
 
         params = _construir_params(entrada)
-        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas)
+        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas, entrada.eventos)
         return _armar_respuesta(resumen, params, entrada.n_corridas, cfg)
+
+    @app.post("/trayectoria")
+    async def trayectoria(entrada: ParametrosTrayectoria):
+        """Devuelve una trayectoria determinista por estrategia con registro diario."""
+        if entrada.dias is not None and entrada.dias > cfg.dias_max:
+            raise HTTPException(
+                status_code=422,
+                detail=f"dias no puede superar {cfg.dias_max}.",
+            )
+        params = _construir_params(entrada)
+        if entrada.semilla is not None:
+            params = params.con(semilla=entrada.semilla)
+        resumen = await app.state.ejecutor.trayectoria(
+            params, entrada.estrategia, params.semilla, entrada.eventos
+        )
+        return _armar_trayectoria(resumen, params, cfg)
 
 
 def _construir_params(entrada: ParametrosComparar) -> Params:
@@ -188,7 +204,10 @@ def _construir_params(entrada: ParametrosComparar) -> Params:
     for campo in (
         "beta", "dosis_dia", "eficacia_vacuna", "lugar_inicio",
         "dias_detectar", "infect_portador", "dias", "semilla",
+        "movilidad_zombie", "via_transmision", "beta_espora",
     ):
+        if not hasattr(entrada, campo):
+            continue
         valor = getattr(entrada, campo)
         if valor is not None:
             cambios[campo] = valor
@@ -251,6 +270,73 @@ def _armar_respuesta(resumen: dict, params: Params, n_corridas: int, cfg) -> dic
         "semilla": params.semilla,
         "n_corridas": n_corridas,
         "mapa": _armar_mapa(mejor, cfg),
+    }
+
+
+
+def _armar_trayectoria(resumen: dict, params: Params, cfg) -> dict:
+    """Construye la respuesta de /trayectoria con nombres/coords de barrios."""
+    cat = cargar_catalogo()
+    barrios_cat = {b["id"]: b for b in cat["barrios"]}
+
+    series = {}
+    for punto in resumen["trayectoria"]:
+        for p in punto["por_barrio"]:
+            series.setdefault(p["barrio_id"], []).append({
+                "dia": punto["dia"],
+                "zombis_activos": p["zombis_activos"],
+                "infectados_acumulados": p["infectados_acumulados"],
+                "nuevos_contagios": p["nuevos_contagios"],
+                "inmunes": p["inmunes"],
+                "primer_dia_infeccion": p.get("primer_dia_infeccion"),
+            })
+
+    poblacion_por_id = dict(zip(resumen.get("barrios_ids", []), resumen.get("poblacion_por_barrio", [])))
+    por_barrio_series = []
+    for bid, puntos in series.items():
+        base = barrios_cat.get(bid, {})
+        primer_dia = None
+        for pt in puntos:
+            if pt.get("infectados_acumulados", 0) > 0:
+                primer_dia = pt["dia"]
+                break
+        por_barrio_series.append({
+            "id": bid,
+            "nombre": base.get("nombre", bid),
+            "lat": base.get("lat"),
+            "lng": base.get("lng"),
+            "primer_dia_infeccion": primer_dia,
+            "poblacion": poblacion_por_id.get(bid),
+            "puntos": puntos,
+        })
+
+    return {
+        "aviso": cfg.aviso_simulado,
+        "estrategia": resumen["estrategia"],
+        "semilla": resumen["semilla"],
+        "dias": resumen["dias"],
+        "parametros_efectivos": asdict(params),
+        "serie_global": [
+            {
+                "dia": p["dia"],
+                "SANO": p["global"].get("SANO", 0),
+                "INCUBANDO": p["global"].get("INCUBANDO", 0),
+                "PORTADOR": p["global"].get("PORTADOR", 0),
+                "ZOMBI": p["global"].get("ZOMBI", 0),
+                "INMUNE": p["global"].get("INMUNE", 0),
+                "nuevos_contagios": p["global"].get("nuevos_contagios", 0),
+                "dosis_dia": p["global"].get("dosis_dia", 0),
+                "lugares_cerrados": p["global"].get("lugares_cerrados", 0),
+                "movimientos": p.get("movimientos", []),
+                "nuevos_focos": p.get("nuevos_focos", []),
+                "contagios_por_lugar": p.get("contagios_por_lugar", []),
+                "eventos": p.get("eventos", []),
+            }
+            for p in resumen["trayectoria"]
+        ],
+        "serie_por_barrio": por_barrio_series,
+        "eventos": [e for p in resumen["trayectoria"] for e in p.get("eventos", [])],
+        "infectados_totales": resumen["infectados_totales"],
     }
 
 

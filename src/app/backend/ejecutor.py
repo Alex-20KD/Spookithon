@@ -42,15 +42,22 @@ class ServidorOcupado(Exception):
 # (no una lambda ni un closure) para que ProcessPoolExecutor pueda serializarla.
 
 def _worker_corrida(
-    params: Params, indice: int
+    params: Params, indice: int, eventos: list | None = None
 ) -> dict[str, tuple[int, list[float], list[int]]]:
     """Ejecuta una sola corrida y devuelve datos serializables (listas, no arrays)."""
-    bruto = _corridas.correr_una_corrida(params, indice)
+    bruto = _corridas.correr_una_corrida(params, indice, eventos=eventos)
     # Convertir numpy -> tipos nativos para pasar entre procesos sin sorpresas.
     return {
         nombre: (int(inf), curva.tolist(), por_barrio.tolist())
         for nombre, (inf, curva, por_barrio) in bruto.items()
     }
+
+
+def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
+    """Ejecuta una sola corrida con registro diario por barrio."""
+    from simulador import corridas as _corridas_sim
+
+    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla, eventos)
 
 
 class Ejecutor:
@@ -91,7 +98,7 @@ class Ejecutor:
             self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
 
-    async def comparar(self, params: Params, n_corridas: int) -> dict[str, Any]:
+    async def comparar(self, params: Params, n_corridas: int, eventos: list | None = None) -> dict[str, Any]:
         """Devuelve el resumen (como dict JSON-serializable) de la comparación.
 
         Lanza :class:`ServidorOcupado` si no hay cupo libre AHORA mismo (no
@@ -115,20 +122,35 @@ class Ejecutor:
             if en_cache is not None:
                 return en_cache
 
-            resumen = await self._ejecutar(params, n_corridas)
+            resumen = await self._ejecutar(params, n_corridas, eventos)
             self._cache.put(clave, resumen)
             return resumen
         finally:
             self._en_curso -= 1
             self._semaforo.release()
 
-    async def _ejecutar(self, params: Params, n_corridas: int) -> dict[str, Any]:
+    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
+        """Ejecuta una corrida determinista con trayectoria diaria."""
+        if self._en_curso >= self._max_simulaciones:
+            raise ServidorOcupado()
+        await self._semaforo.acquire()
+        self._en_curso += 1
+        try:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(
+                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla, eventos
+            )
+        finally:
+            self._en_curso -= 1
+            self._semaforo.release()
+
+    async def _ejecutar(self, params: Params, n_corridas: int, eventos: list | None = None) -> dict[str, Any]:
         assert self._pool is not None, "El pool no está iniciado."
         loop = asyncio.get_running_loop()
 
         # Lanzar una tarea por corrida al pool de procesos.
         futuros = [
-            loop.run_in_executor(self._pool, _worker_corrida, params, i)
+            loop.run_in_executor(self._pool, _worker_corrida, params, i, eventos)
             for i in range(n_corridas)
         ]
         resultados = await asyncio.gather(*futuros)

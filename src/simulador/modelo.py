@@ -53,6 +53,9 @@ class Resultado:
     dosis_usadas: int
     dias_cierre: int
     infectados_por_barrio: np.ndarray
+    # Trayectoria diaria (solo si registrar_trayectoria=True). Lista de dicts
+    # con conteos globales y por barrio por día. None si no se registró.
+    trayectoria: list | None = None
 
 
 class Simulacion:
@@ -65,6 +68,8 @@ class Simulacion:
         estrategia,
         semilla: int | None = None,
         atribuir: bool = False,
+        registrar_trayectoria: bool = False,
+        eventos: list | None = None,
     ):
         self.params = params
         self.red = red
@@ -74,6 +79,12 @@ class Simulacion:
         # resultados que antes porque no se consumen números aleatorios nuevos
         # ni se altera ninguna decisión.
         self.atribuir = atribuir
+        self.registrar_trayectoria = registrar_trayectoria
+        self.eventos = list(eventos or [])
+        self._eventos_por_dia: dict[int, list[dict]] = {}
+        for ev in self.eventos:
+            self._eventos_por_dia.setdefault(int(ev.get("dia", 0)), []).append(ev)
+        self.trayectoria: list | None = [] if registrar_trayectoria else None
         # infecciones_causadas[j] = nº (fraccional) de infecciones directas que
         # causó la persona j. Solo se llena si atribuir=True.
         self.infecciones_causadas = np.zeros(red.n_personas, dtype=np.float64)
@@ -112,6 +123,22 @@ class Simulacion:
         self.dias_cierre = 0
         self.curva = np.zeros((params.dias + 1, N_ESTADOS), dtype=np.int64)
 
+        # Mapeo persona -> posición de barrio (para conteos espaciales).
+        n_barrios = len(red.barrios_ids)
+        self._n_barrios = n_barrios
+        self._pos_barrio = np.zeros(red.n_personas, dtype=np.int64)
+        self._lugares_contagio_hoy: list[int] = []
+        for pos, lugar_idx in enumerate(red.barrios_lugar_idx):
+            self._pos_barrio[red.barrio_persona == lugar_idx] = pos
+        self.poblacion_por_barrio = np.bincount(self._pos_barrio, minlength=n_barrios)
+        self._ids_barrio = list(red.barrios_ids)
+        self._dosis_prev = 0
+        self._barrios_con_contagio: set[str] = set()
+        self._primer_dia_barrio: dict[str, int] = {}
+        self._movimientos_hoy: list[dict] = []
+        self._zombie_corredor_activo = False
+        self._fallo_contencion_activo = False
+
         self._sembrar()
 
     # ------------------------------------------------------------------ #
@@ -140,7 +167,33 @@ class Simulacion:
             sembrados = self.rng.choice(candidatos, size=n_sembrar, replace=False)
 
         self._infectar(sembrados, dia=0)
+        # Registrar lugar de contagio para el brote inicial.
+        self._lugares_contagio_hoy = []
+        for persona in np.asarray(sembrados, dtype=np.int64).ravel():
+            pos = int(self._pos_barrio[persona])
+            if pos < len(self.red.barrios_lugar_idx):
+                self._lugares_contagio_hoy.append(int(self.red.barrios_lugar_idx[pos]))
+        if self.registrar_trayectoria:
+            self._registrar_trayectoria(0, np.asarray(sembrados, dtype=np.int64))
         self._registrar_curva(0)
+
+    def _aplicar_evento(self, ev: dict, dia: int) -> None:
+        tipo = ev.get("tipo")
+        if tipo == "brote_secundario":
+            barrio_id = ev.get("barrio_id")
+            n = int(ev.get("intensidad", 1))
+            if barrio_id in self._ids_barrio:
+                pos = self._ids_barrio.index(barrio_id)
+                candidatos = np.where((self._pos_barrio == pos) & (self.estado == SANO))[0]
+                if candidatos.size > 0:
+                    elegidos = self.rng.choice(candidatos, size=min(n, candidatos.size), replace=False)
+                    self._infectar(elegidos, dia)
+        elif tipo == "zombie_corredor":
+            self._zombie_corredor_activo = True
+            self._zombie_corredor_fin = dia + int(ev.get("duracion", 5))
+        elif tipo == "fallo_contencion":
+            self._fallo_contencion_activo = True
+            self._fallo_contencion_fin = dia + int(ev.get("duracion", 5))
 
     def _infectar(self, personas: np.ndarray, dia: int) -> None:
         """Marca a ``personas`` como INCUBANDO y les asigna su tiempo de conversión."""
@@ -154,12 +207,112 @@ class Simulacion:
             self.params.incub_min, self.params.incub_max + 1, size=personas.size
         )
 
+    def _registrar_trayectoria(self, dia: int, nuevos: np.ndarray) -> None:
+        if not self.registrar_trayectoria or self.trayectoria is None:
+            return
+        red = self.red
+        estado = self.estado
+        nuevos = np.asarray(nuevos, dtype=np.int64).ravel()
+
+        # Conteos globales por estado.
+        conteo_global = np.bincount(estado, minlength=N_ESTADOS)
+        nombres = NOMBRES_ESTADO
+        global_dict = {nombres[i]: int(conteo_global[i]) for i in range(N_ESTADOS)}
+        global_dict["nuevos_contagios"] = int(nuevos.size)
+        dosis_hoy = int(self.dosis_usadas - self._dosis_prev)
+        global_dict["dosis_dia"] = dosis_hoy
+        global_dict["lugares_cerrados"] = int(self.cerrado.sum())
+
+        # Conteos por barrio.
+        pos_nuevos = self._pos_barrio[nuevos] if nuevos.size else np.array([], dtype=np.int64)
+        nuevos_por_barrio = np.bincount(pos_nuevos, minlength=self._n_barrios)
+        pos_zombis = self._pos_barrio[estado == ZOMBI]
+        zombis_por_barrio = np.bincount(pos_zombis, minlength=self._n_barrios)
+        pos_infectados = self._pos_barrio[self.fue_infectado]
+        acum_por_barrio = np.bincount(pos_infectados, minlength=self._n_barrios)
+        pos_inmunes = self._pos_barrio[estado == INMUNE]
+        inmunes_por_barrio = np.bincount(pos_inmunes, minlength=self._n_barrios)
+
+        por_barrio = []
+        for i, bid in enumerate(self._ids_barrio):
+            por_barrio.append({
+                "barrio_id": bid,
+                "zombis_activos": int(zombis_por_barrio[i]),
+                "infectados_acumulados": int(acum_por_barrio[i]),
+                "nuevos_contagios": int(nuevos_por_barrio[i]),
+                "inmunes": int(inmunes_por_barrio[i]),
+            })
+
+        eventos = []
+        if dia == 0:
+            eventos.append({"dia": 0, "tipo": "escenario", "titulo": "Paciente cero infectado"})
+        if dia == self.params.dia_medidas:
+            eventos.append({"dia": dia, "tipo": "medidas", "titulo": "Activación del protocolo epidemiológico"})
+        if dia == self.params.dia_vacuna:
+            eventos.append({"dia": dia, "tipo": "vacuna", "titulo": "Disponibilidad inicial de vacunas"})
+        if nuevos.size > 0:
+            eventos.append({"dia": dia, "tipo": "contagio", "titulo": "Nuevos contagios", "cantidad": int(nuevos.size)})
+        if dosis_hoy > 0:
+            eventos.append({"dia": dia, "tipo": "vacunacion", "titulo": "Vacunación", "dosis": dosis_hoy})
+        if int(self.cerrado.sum()) > 0:
+            eventos.append({"dia": dia, "tipo": "cierre", "titulo": "Cierres aplicados", "lugares": int(self.cerrado.sum())})
+
+        for ev in self._eventos_por_dia.get(dia, []):
+            eventos.append({"dia": dia, "tipo": ev.get("tipo", "evento"), "titulo": ev.get("nombre", ev.get("tipo", "evento")), "intensidad": ev.get("intensidad")})
+
+        # Contagios por barrio (ubicación territorial), con todas las variables.
+        contagios_por_lugar = []
+        for i, pbarrio in enumerate(por_barrio):
+            if pbarrio["infectados_acumulados"] <= 0:
+                continue
+            lugar_idx = int(self.red.barrios_lugar_idx[i]) if i < len(self.red.barrios_lugar_idx) else -1
+            coord = self.red.coords_lugar[lugar_idx] if 0 <= lugar_idx < len(self.red.coords_lugar) else (-80.72, -0.95)
+            contagios_por_lugar.append({
+                "lugar_id": int(lugar_idx),
+                "lng": float(coord[0]),
+                "lat": float(coord[1]),
+                "nuevos": int(pbarrio["nuevos_contagios"]),
+                "acumulados": int(pbarrio["infectados_acumulados"]),
+                "zombis": int(pbarrio["zombis_activos"]),
+            })
+
+        nuevos_focos = []
+        for pbarrio in por_barrio:
+            bid = pbarrio["barrio_id"]
+            if pbarrio["infectados_acumulados"] > 0 and bid not in self._primer_dia_barrio:
+                self._primer_dia_barrio[bid] = int(dia)
+            pbarrio["primer_dia_infeccion"] = self._primer_dia_barrio.get(bid)
+            if pbarrio["infectados_acumulados"] > 0 and bid not in self._barrios_con_contagio:
+                self._barrios_con_contagio.add(bid)
+                nuevos_focos.append({
+                    "dia": int(dia),
+                    "barrio_id": bid,
+                    "nuevos_contagios": pbarrio["nuevos_contagios"],
+                    "infectados_acumulados": pbarrio["infectados_acumulados"],
+                    "zombis_activos": pbarrio["zombis_activos"],
+                })
+
+        self.trayectoria.append({
+            "dia": int(dia),
+            "estrategia": self.estrategia.nombre,
+            "global": global_dict,
+            "por_barrio": por_barrio,
+            "movimientos": list(self._movimientos_hoy),
+            "nuevos_focos": nuevos_focos,
+            "contagios_por_lugar": contagios_por_lugar,
+            "eventos": eventos,
+        })
+
     # ------------------------------------------------------------------ #
     # Dinámica diaria
     # ------------------------------------------------------------------ #
     def correr(self) -> Resultado:
         """Ejecuta la simulación completa y devuelve el :class:`Resultado`."""
         for dia in range(1, self.params.dias + 1):
+            # Aplicar eventos de brote sorpresa para este día.
+            for ev in self._eventos_por_dia.get(dia, []):
+                self._aplicar_evento(ev, dia)
+
             # (a) estrategia y aplicación de medidas
             if dia >= self.params.dia_medidas:
                 self._aplicar_estrategia(dia)
@@ -180,6 +333,16 @@ class Simulacion:
             # (f) registro de la curva
             self._registrar_curva(dia)
 
+            # Desactivar eventos temporales.
+            if getattr(self, "_zombie_corredor_activo", False) and dia >= getattr(self, "_zombie_corredor_fin", dia + 1):
+                self._zombie_corredor_activo = False
+            if getattr(self, "_fallo_contencion_activo", False) and dia >= getattr(self, "_fallo_contencion_fin", dia + 1):
+                self._fallo_contencion_activo = False
+
+            if self.registrar_trayectoria:
+                self._registrar_trayectoria(dia, nuevos)
+                self._dosis_prev = self.dosis_usadas
+
         infectados_totales = int(self.fue_infectado.sum())
         return Resultado(
             infectados_totales=infectados_totales,
@@ -187,6 +350,7 @@ class Simulacion:
             dosis_usadas=self.dosis_usadas,
             dias_cierre=self.dias_cierre,
             infectados_por_barrio=self._infectados_por_barrio(),
+            trayectoria=self.trayectoria,
         )
 
     # ------------------------------------------------------------------ #
@@ -255,7 +419,10 @@ class Simulacion:
         # Solo protege a los realmente SANOS, con prob. eficacia.
         sanos = elegidos[self.estado[elegidos] == SANO]
         if sanos.size > 0:
-            protegidos = sanos[sorteo[: sanos.size] < self.params.eficacia_vacuna]
+            eficacia = self.params.eficacia_vacuna
+            if getattr(self, "_fallo_contencion_activo", False):
+                eficacia *= 0.5
+            protegidos = sanos[sorteo[: sanos.size] < eficacia]
             self.estado[protegidos] = INMUNE
 
     # ------------------------------------------------------------------ #
@@ -295,7 +462,10 @@ class Simulacion:
         # Infectividad por persona (según estado real).
         infect_persona = np.zeros(self.red.n_personas, dtype=np.float64)
         infect_persona[self.estado == ZOMBI] = 1.0
-        infect_persona[self.estado == PORTADOR] = self.params.infect_portador
+        factor_portador = self.params.infect_portador
+        if getattr(self, "_zombie_corredor_activo", False):
+            factor_portador *= 2.0
+        infect_persona[self.estado == PORTADOR] = factor_portador
 
         idx = np.where(presente)[0]
         lug_p = lugar[idx]
@@ -307,9 +477,47 @@ class Simulacion:
             lug_p, weights=infect_persona[per_p], minlength=n_lugares
         )
 
+        # --- Movilidad zombie (reproducible, agregada) ---
+        self._movimientos_hoy = []
+        mv = float(self.params.movilidad_zombie)
+        if mv > 0:
+            zombis = np.where(self.estado == ZOMBI)[0]
+            if zombis.size > 0:
+                mover = self.rng.random(zombis.size) < mv
+                zombis_mov = zombis[mover]
+                if zombis_mov.size > 0:
+                    origenes = self._pos_barrio[zombis_mov]
+                    destinos = np.empty(zombis_mov.size, dtype=np.int64)
+                    for k, o in enumerate(origenes):
+                        vs = self.red.barrios_vecinos[o] if o < len(self.red.barrios_vecinos) else []
+                        if vs:
+                            destinos[k] = int(self.rng.choice(vs))
+                        else:
+                            destinos[k] = int(o)
+                    pares: dict[tuple[int, int], int] = {}
+                    for o, d in zip(origenes.tolist(), destinos.tolist()):
+                        if o != d:
+                            pares[(o, d)] = pares.get((o, d), 0) + 1
+                    ids = self._ids_barrio
+                    for (o, d), c in pares.items():
+                        self._movimientos_hoy.append({
+                            "origen": ids[o],
+                            "destino": ids[d],
+                            "cantidad": int(c),
+                        })
+                    for d in set(destinos.tolist()):
+                        if d < 0:
+                            continue
+                        place_idx = int(self.red.barrios_lugar_idx[d])
+                        n_mov = int((destinos == d).sum())
+                        carga_lugar[place_idx] += float(n_mov) * 1.0
+
         denom = np.sqrt(np.maximum(presentes_lugar, 1.0))
         peso_lugar = self._peso_lugar_tipo[self.red.tipo_lugar]
-        lambda_lugar = self.params.beta * peso_lugar * carga_lugar / denom
+        via = getattr(self.params, "via_transmision", "combinada")
+        beta_mordida = self.params.beta if via in ("mordidas", "combinada") else 0.0
+        beta_espora = getattr(self.params, "beta_espora", self.params.beta) if via in ("esporas", "combinada") else 0.0
+        lambda_lugar = (beta_mordida + beta_espora) * peso_lugar * carga_lugar / denom
 
         # Suma de lambdas por persona (solo aristas presentes).
         lambda_persona = np.bincount(
@@ -320,6 +528,14 @@ class Simulacion:
         sanos = self.estado == SANO
         sorteo = self.rng.random(self.red.n_personas)
         nuevos = np.where(sanos & (sorteo < prob_inf))[0]
+
+        # Registrar el barrio (lugar territorial) de cada nuevo infectado.
+        self._lugares_contagio_hoy = []
+        if nuevos.size > 0:
+            for persona in nuevos:
+                pos = int(self._pos_barrio[persona])
+                if pos < len(self.red.barrios_lugar_idx):
+                    self._lugares_contagio_hoy.append(int(self.red.barrios_lugar_idx[pos]))
 
         # Atribución fraccional de infector (opcional, sin azar nuevo).
         if self.atribuir and nuevos.size > 0:
