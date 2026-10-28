@@ -37,6 +37,7 @@ from .configuracion import cargar_configuracion
 from .ejecutor import Ejecutor, ServidorOcupado
 from .esquemas import ParametrosComparar, ParametrosTrayectoria
 from .parametros import describir_parametros
+from . import datos as _datos
 
 
 @lru_cache(maxsize=1)
@@ -189,6 +190,54 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
                 "dias_max": cfg.dias_max,
             },
         }
+
+    # --- Datos del escenario, leídos de DynamoDB (tablas plaga-*) ---
+    # Son datos ficticios cargados por scripts/cargar_datos.py. Lectura real.
+
+    def _leer(fn, clave: str):
+        """Ejecuta una lectura de DynamoDB y traduce fallos a 503 claro."""
+        try:
+            return fn()
+        except _datos.DatosNoDisponibles:
+            raise HTTPException(
+                status_code=503,
+                detail="La base de datos del escenario no está disponible ahora mismo.",
+            )
+
+    @app.get("/datos/casos")
+    async def datos_casos():
+        """Casos registrados del brote (DynamoDB: plaga-casos). DATOS SIMULADOS."""
+        return {"aviso": cfg.aviso_simulado, "casos": _leer(_datos.listar_casos, "casos")}
+
+    @app.get("/datos/casos/resumen")
+    async def datos_casos_resumen():
+        """Agregado de casos: total y conteo por estado y por barrio."""
+        return {"aviso": cfg.aviso_simulado, **_leer(_datos.resumen_casos, "casos")}
+
+    @app.get("/datos/curas")
+    async def datos_curas():
+        """Curas/antivirales del escenario (DynamoDB: plaga-curas)."""
+        return {"aviso": cfg.aviso_simulado, "curas": _leer(_datos.listar_curas, "curas")}
+
+    @app.get("/datos/sintomas")
+    async def datos_sintomas():
+        """Síntomas por fase (DynamoDB: plaga-sintomas)."""
+        return {"aviso": cfg.aviso_simulado, "sintomas": _leer(_datos.listar_sintomas, "sintomas")}
+
+    @app.get("/datos/inventario")
+    async def datos_inventario():
+        """Inventario de curas por centro (DynamoDB: plaga-inventario)."""
+        return {"aviso": cfg.aviso_simulado, "inventario": _leer(_datos.listar_inventario, "inventario")}
+
+    @app.get("/datos/fumigaciones")
+    async def datos_fumigaciones():
+        """Fumigaciones programadas/hechas (DynamoDB: plaga-fumigaciones)."""
+        return {"aviso": cfg.aviso_simulado, "fumigaciones": _leer(_datos.listar_fumigaciones, "fumigaciones")}
+
+    @app.get("/datos/noticias")
+    async def datos_noticias():
+        """Noticias del brote (DynamoDB: plaga-noticias)."""
+        return {"aviso": cfg.aviso_simulado, "noticias": _leer(_datos.listar_noticias, "noticias")}
 
     @app.post("/comparar")
     async def comparar(entrada: ParametrosComparar):
