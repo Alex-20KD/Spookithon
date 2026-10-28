@@ -225,7 +225,6 @@ export default function MapPage() {
 
       <div className="map-layout" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 12 }}>
         <div>
-        <div>
           {mapa && (
             <div className="map-container" style={{ height: 620 }}>
               <EpidemicMap
@@ -333,7 +332,6 @@ export default function MapPage() {
             </div>
           </Card>
 
-        </div>
         <div className="map-side">
           <Card title="Controles de reproducción">
             <div className="sim-controls">
