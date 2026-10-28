@@ -18,3 +18,10 @@ requirements-dev.txt
 # Artefactos y config del frontend (el backend no los necesita).
 src/app/frontend
 frontend
+
+# EXCEPCIÓN: el simulador (src/simulador/territorio.py) necesita este GeoJSON,
+# que por ahora vive dentro del frontend. Hay que reincluirlo en la imagen.
+# (Para reincluir un archivo, su carpeta no debe quedar totalmente excluida.)
+!src/app/frontend/public
+!src/app/frontend/public/geojson
+!src/app/frontend/public/geojson/manta_cabecera_cantonal.geojson

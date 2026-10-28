@@ -11,6 +11,9 @@ Variables de entorno (todas opcionales, con valores por defecto seguros):
 - ``DIAS_MAX``: tope de días por petición (por defecto 90).
 - ``MAX_SIMULACIONES``: simulaciones simultáneas permitidas (por defecto 2).
 - ``MAX_WORKERS``: procesos del pool de simulación (por defecto ``os.cpu_count()``).
+- ``EJECUTOR_MODO``: ``procesos`` (por defecto) o ``hilos``. Usa ``hilos`` en
+  contenedores con poca CPU (p. ej. 0.25 vCPU en ECS) donde el pool de procesos
+  puede fallar al arrancar. El resultado numérico es idéntico.
 - ``AVISO_SIMULADO``: texto del aviso incluido en cada respuesta.
 """
 
@@ -39,6 +42,12 @@ def _leer_int(nombre: str, por_defecto: int, minimo: int = 1) -> int:
     return max(minimo, valor)
 
 
+def _leer_modo_ejecutor(nombre: str, por_defecto: str) -> str:
+    """Lee el modo del pool: solo 'procesos' o 'hilos' (cualquier otro -> default)."""
+    bruto = (os.getenv(nombre) or "").strip().lower()
+    return bruto if bruto in ("procesos", "hilos") else por_defecto
+
+
 @dataclass(frozen=True)
 class Configuracion:
     """Valores de configuración efectivos del backend."""
@@ -51,6 +60,10 @@ class Configuracion:
     dias_max: int = 100
     max_simulaciones: int = 2
     max_workers: int = 0  # 0 => usar os.cpu_count()
+    # Modo del pool de ejecución: "procesos" (por defecto, ideal en local con
+    # varias CPUs) o "hilos" (robusto en contenedores pequeños, p. ej. 0.25 vCPU
+    # en ECS, donde ProcessPoolExecutor con forkserver puede romperse).
+    ejecutor_modo: str = "procesos"
     aviso_simulado: str = "DATOS SIMULADOS"
 
     @property
@@ -71,5 +84,6 @@ def cargar_configuracion() -> Configuracion:
         dias_max=_leer_int("DIAS_MAX", 100),
         max_simulaciones=_leer_int("MAX_SIMULACIONES", 2),
         max_workers=_leer_int("MAX_WORKERS", 0, minimo=0),
+        ejecutor_modo=_leer_modo_ejecutor("EJECUTOR_MODO", "procesos"),
         aviso_simulado=os.getenv("AVISO_SIMULADO", "DATOS SIMULADOS"),
     )
