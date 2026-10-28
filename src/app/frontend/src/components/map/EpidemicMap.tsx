@@ -103,7 +103,12 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     }
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
-    map.on("error", () => setMapError(true));
+    // Un fallo de los tiles del estilo base externo (p. ej. el tile server
+    // público) NO debe ocultar el mapa: los barrios, edificios y el territorio
+    // de Manta se dibujan como capas GeoJSON locales encima. Solo lo registramos.
+    map.on("error", (e) => {
+      console.warn("MapLibre:", (e as { error?: { message?: string } })?.error?.message ?? e);
+    });
 
     map.on("load", () => {
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -437,8 +442,9 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     <div>
       {mapError && (
         <div className="error-box" role="alert">
-          No se pudo inicializar el mapa vectorial. Revisa tu conexión o define
-          <code> VITE_MAP_STYLE_URL</code> / <code>VITE_MAPTILER_KEY</code>.
+          No se pudo inicializar el mapa. Es posible que tu navegador no soporte
+          WebGL. Los barrios y su nivel de riesgo también se muestran en la tabla
+          “Barrios más afectados”.
         </div>
       )}
       <div style={{ position: "relative" }}>
