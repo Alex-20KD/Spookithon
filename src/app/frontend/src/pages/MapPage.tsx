@@ -242,11 +242,6 @@ export default function MapPage() {
             </div>
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
-            {trayectoria
-              ? "La evolución por día proviene de una trayectoria real del simulador (una corrida determinista)."
-              : "Modo agregado: ejecuta una simulación para obtener una trayectoria diaria."}
-          </div>
-
           <div style={{ height: 12 }} />
           <Card title="Centro de decisiones">
             <div style={{ marginBottom: 8 }}>
@@ -331,8 +326,16 @@ export default function MapPage() {
               </button>
             </div>
           </Card>
+            {trayectoria
+              ? "La evolución por día proviene de una trayectoria real del simulador (una corrida determinista)."
+              : "Modo agregado: ejecuta una simulación para obtener una trayectoria diaria."}
+          </div>
 
+          <div style={{ height: 12 }} />
+
+        </div>
         <div className="map-side">
+          <div style={{ height: 12 }} />
           <Card title="Controles de reproducción">
             <div className="sim-controls">
               <button className="btn primary" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setReproduciendo((v) => !v)}>
@@ -392,8 +395,6 @@ export default function MapPage() {
               </select>
             </div>
           </Card>
-        </div>
-
           <div style={{ height: 12 }} />
           <Card title="Nivel de riesgo">
             <div className="legend">
