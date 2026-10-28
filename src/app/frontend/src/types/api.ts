@@ -63,6 +63,15 @@ export interface Mapa {
   barrios: BarrioMapa[];
 }
 
+/** R0 calibrado del modelo base (GET /comparar). Puede faltar. */
+export interface R0Calibrado {
+  media: number;
+  p10: number;
+  p90: number;
+  v: number | null;
+  objetivo: number | null;
+}
+
 /** Respuesta completa de POST /comparar. */
 export interface CompararResponse {
   aviso: string;
@@ -72,6 +81,7 @@ export interface CompararResponse {
   parametros_efectivos: Record<string, unknown>;
   semilla: number;
   n_corridas: number;
+  r0?: R0Calibrado | null;
   mapa: Mapa;
 }
 

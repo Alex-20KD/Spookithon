@@ -19,8 +19,11 @@ Diseño:
 
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from functools import lru_cache
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -34,6 +37,34 @@ from .configuracion import cargar_configuracion
 from .ejecutor import Ejecutor, ServidorOcupado
 from .esquemas import ParametrosComparar, ParametrosTrayectoria
 from .parametros import describir_parametros
+
+
+@lru_cache(maxsize=1)
+def _r0_calibrado() -> dict | None:
+    """Lee el R0 calibrado del modelo base desde calibracion.json.
+
+    Es un valor fijo del diseño (beta calibrado a R0≈2,5), no depende de los
+    parámetros que el usuario toca. Si el archivo no está, devuelve None y el
+    frontend muestra el placeholder.
+    """
+    ruta = (
+        Path(__file__).resolve().parents[2]
+        / "simulador" / "data" / "calibracion.json"
+    )
+    try:
+        datos = json.loads(ruta.read_text(encoding="utf-8"))
+        r0 = datos.get("r0", {})
+        return {
+            "media": round(float(r0["media"]), 2),
+            "p10": round(float(r0["p10"]), 2),
+            "p90": round(float(r0["p90"]), 2),
+            "v": datos.get("v"),
+            "objetivo": datos.get("objetivo_r0"),
+        }
+    except (OSError, KeyError, ValueError, TypeError):
+        return None
+
+
 
 
 CONFIG = cargar_configuracion()
@@ -270,6 +301,7 @@ def _armar_respuesta(resumen: dict, params: Params, n_corridas: int, cfg) -> dic
         "parametros_efectivos": asdict(params),
         "semilla": params.semilla,
         "n_corridas": n_corridas,
+        "r0": _r0_calibrado(),
         "mapa": _armar_mapa(mejor, cfg),
     }
 

@@ -95,7 +95,12 @@ export default function Dashboard() {
             <MetricCard label="Corridas" value={resultado.n_corridas} sub={`semilla ${resultado.semilla}`} color="blue" />
             <MetricCard label="Mejor que 'Nada'" value={mejor ? `${mejor.pct_mejor_que_nada.toFixed(0)}%` : "—"} sub="de corridas" color="green" />
             <MetricCard label="Mejor que 'Azar'" value={mejor ? `${mejor.pct_mejor_que_azar.toFixed(0)}%` : "—"} sub="de corridas" color="green" />
-            <MetricCard label="R0" value="No provisto" sub="la API no lo devuelve" color="muted" />
+            <MetricCard
+              label="R0"
+              value={resultado.r0 ? resultado.r0.media.toFixed(2) : "—"}
+              sub={resultado.r0 ? `rango ${resultado.r0.p10}–${resultado.r0.p90} · V=${resultado.r0.v}d` : "no disponible"}
+              color={resultado.r0 ? "orange" : "muted"}
+            />
           </div>
 
           <div style={{ height: 16 }} />
