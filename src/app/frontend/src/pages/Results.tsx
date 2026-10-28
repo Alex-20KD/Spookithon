@@ -112,6 +112,7 @@ export default function Results() {
   const [scenario, setScenario] = useState("base");
   const [comparison, setComparison] = useState<"strategies" | "brotes">("strategies");
   const [strategy, setStrategy] = useState("Nada");
+  const [intervencionAdicional, setIntervencionAdicional] = useState("none");
   const [estrategiaSel, setEstrategiaSel] = useState<string | null>(null);
 
   const [brotesResultados, setBrotesResultados] = useState<Record<string, CompararResponse>>({});
@@ -146,8 +147,11 @@ export default function Results() {
   useEffect(() => {
     if (comparison !== "strategies") return;
     const ev = eventosParaEscenario(scenario, brotes);
-    comparar(ev as any);
-  }, [scenario, comparison, brotes]);
+    const iv = intervencionAdicional !== "none"
+      ? [{ dia: 30, estrategia: intervencionAdicional, duracion: 10 }]
+      : undefined;
+    comparar(ev as any, iv as any);
+  }, [scenario, comparison, brotes, intervencionAdicional]);
 
   // Modo brotes: ejecuta un comparar por escenario bajo la estrategia elegida.
   useEffect(() => {
@@ -288,6 +292,22 @@ export default function Results() {
               <option value="brotes">Comparar brotes bajo la misma estrategia</option>
             </select>
           </div>
+          <div>
+            <label style={{ fontSize: 12, color: "var(--muted)" }}>Intervención adicional</label>
+            <select
+              value={intervencionAdicional}
+              onChange={(e) => setIntervencionAdicional(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="none">Ninguna</option>
+              <option value="BloqueoEmergencia">Bloqueo de emergencia</option>
+              <option value="VigilanciaIntensiva">Vigilancia intensiva</option>
+              <option value="EvacuacionPreventiva">Evacuación preventiva</option>
+              <option value="AislamientoFocalizado">Aislamiento focalizado</option>
+              <option value="RefuerzoContencion">Refuerzo de contención</option>
+              <option value="ControlEsporas">Control de esporas</option>
+            </select>
+          </div>
           {comparison === "brotes" && (
             <div>
               <label style={{ fontSize: 12, color: "var(--muted)" }}>Estrategia</label>
@@ -312,7 +332,7 @@ export default function Results() {
       {comparison === "strategies" && resultado && (
         <>
           <div className="kpi-row">
-            <MetricCard label="Mejor estrategia" value={resultado.mejor_estrategia} color="green" />
+            <MetricCard label="Mejor estrategia" value={nombreAmigable(resultado.mejor_estrategia)} color="green" />
             <MetricCard
               label="Infectados (mejor)"
               value={mejor ? num(mejor.infectados_media) : "—"}

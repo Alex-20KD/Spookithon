@@ -6,6 +6,12 @@ export const NOMBRES_AMIGABLES: Record<string, string> = {
   Centralidad: "Por centralidad (nodos clave)",
   CierresMasCentralidad: "Cierres + centralidad",
   Anillo: "Anillo (barrera perimetral)",
+  BloqueoEmergencia: "Bloqueo de emergencia",
+  VigilanciaIntensiva: "Vigilancia intensiva",
+  EvacuacionPreventiva: "Evacuación preventiva",
+  AislamientoFocalizado: "Aislamiento focalizado",
+  RefuerzoContencion: "Refuerzo de contención",
+  ControlEsporas: "Control de esporas",
 };
 
 export function nombreAmigable(nombre: string): string {

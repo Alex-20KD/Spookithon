@@ -18,11 +18,23 @@ export default function MetricCard({
   color?: keyof typeof colors;
 }) {
   const c = colors[color] || colors.blue;
+  const isLong = typeof value === "string" && value.length > 18;
   return (
     <div className="metric-card">
       <div className="glow" style={{ background: c }} />
       <div className="label">{label}</div>
-      <div className="value" style={{ color: c, overflowWrap: "anywhere", wordBreak: "break-word" }}>{value}</div>
+      <div
+        className="value"
+        style={{
+          color: c,
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+          fontSize: isLong ? 18 : undefined,
+          lineHeight: isLong ? 1.2 : undefined,
+        }}
+      >
+        {value}
+      </div>
       {sub && <div className="sub">{sub}</div>}
     </div>
   );
