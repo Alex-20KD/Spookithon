@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { obtenerCatalogo } from "../services/apiClient";
 import {
   ComposedChart,
   Area,
@@ -17,6 +18,8 @@ import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
 import MetricCard from "../components/ui/MetricCard";
 import EventsPanel from "../components/EventsPanel";
+import BrotesEditor from "../components/BrotesEditor";
+import type { CatalogoResponse } from "../types/api";
 import CurveTooltip from "../components/charts/CurveTooltip";
 import { nombreAmigable } from "../utils/estrategias";
 import type { ResultadoEstrategia } from "../types/api";
@@ -37,8 +40,15 @@ function datosCurva(e: ResultadoEstrategia) {
 }
 
 export default function Results() {
-  const { resultado, cargando, error } = useSimulation();
+  const { resultado, cargando, error, brotes, setBrotes, comparar, cargarTrayectoria, params, meta, trayectoria } = useSimulation();
+  const [catalogo, setCatalogo] = useState<CatalogoResponse | null>(null);
   const [estrategiaSel, setEstrategiaSel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    obtenerCatalogo(ctrl.signal).then(setCatalogo).catch(() => setCatalogo(null));
+    return () => ctrl.abort();
+  }, []);
 
   const estrategias = resultado?.estrategias ?? [];
 
@@ -54,6 +64,18 @@ export default function Results() {
   }, [resultado, estrategiaSel]);
 
   const curva = seleccionada ? datosCurva(seleccionada) : [];
+
+  const variantesData = useMemo(
+    () =>
+      (trayectoria?.serie_global ?? []).map((p) => ({
+        dia: p.dia,
+        acechador: p.variantes?.acechador ?? 0,
+        chasqueador: p.variantes?.chasqueador ?? 0,
+        gordinflon: p.variantes?.gordinflon ?? 0,
+        normal: p.variantes?.normal ?? 0,
+      })),
+    [trayectoria],
+  );
 
   // --- Estados de carga / error / vacío --- //
   if (cargando) {
@@ -107,6 +129,28 @@ export default function Results() {
     <div>
       <Cabecera />
 
+      <Card title="Escenario y brotes">
+        <BrotesEditor
+          brotes={brotes}
+          onChange={setBrotes}
+          catalogo={catalogo}
+          diasMax={meta?.topes?.dias_max ?? params.dias}
+        />
+        <div style={{ marginTop: 12 }}>
+          <button
+            className="btn primary"
+            onClick={async () => {
+              const res = await comparar();
+              if (res) await cargarTrayectoria();
+            }}
+            disabled={cargando}
+          >
+            {cargando ? "Ejecutando análisis…" : "Ejecutar análisis"}
+          </button>
+        </div>
+      </Card>
+
+      <div style={{ height: 16 }} />
       <div className="kpi-row">
         <MetricCard label="Mejor estrategia" value={resultado.mejor_estrategia} color="green" />
         <MetricCard
@@ -181,6 +225,27 @@ export default function Results() {
 
       <div style={{ height: 16 }} />
 
+      {trayectoria && (
+        <Card title="Variantes de zombis por día">
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer>
+              <ComposedChart data={variantesData}>
+                <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+                <XAxis dataKey="dia" stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
+                <YAxis stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
+                <Tooltip contentStyle={{ background: "#1B2938", border: "1px solid #334155", color: "#F1F5F9" }} />
+                <Legend wrapperStyle={{ color: "#CBD5E1", fontSize: 12 }} />
+                <Line type="monotone" dataKey="acechador" stroke="#FF5263" name="Acechadores" dot={false} />
+                <Line type="monotone" dataKey="chasqueador" stroke="#FF7A45" name="Chasqueadores" dot={false} />
+                <Line type="monotone" dataKey="gordinflon" stroke="#F2C94C" name="Gordinflones" dot={false} />
+                <Line type="monotone" dataKey="normal" stroke="#4DD0E1" name="Zombis comunes" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      <div style={{ height: 16 }} />
       <Card title="Infectados y salvados por estrategia">
         <div style={{ overflowX: "auto" }}>
           <table className="table">
