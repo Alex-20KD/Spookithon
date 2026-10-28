@@ -15,6 +15,7 @@ import Card from "../components/ui/Card";
 import MetricCard from "../components/ui/MetricCard";
 import PageTitle from "../components/ui/PageTitle";
 import Pill from "../components/ui/Pill";
+import CurveTooltip from "../components/charts/CurveTooltip";
 import EventsPanel from "../components/EventsPanel";
 import { nombreAmigable } from "../utils/estrategias";
 
@@ -109,18 +110,17 @@ export default function Dashboard() {
               <div style={{ width: "100%", height: 300 }}>
                 <ResponsiveContainer>
                   <ComposedChart data={curva}>
-                    <CartesianGrid stroke="#263746" strokeDasharray="3 3" />
-                    <XAxis dataKey="dia" stroke="#8B9BB0" />
-                    <YAxis stroke="#8B9BB0" />
+                    <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+                    <XAxis dataKey="dia" stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
+                    <YAxis stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
                     <Tooltip
-                      contentStyle={{ background: "#16222E", border: "1px solid #263746", color: "#E6EDF3" }}
-                      formatter={(v, n) => [num(Number(v)), String(n)]}
-                      labelFormatter={(l) => `Día ${l}`}
+                      content={<CurveTooltip estrategia={resultado.mejor_estrategia} />}
+                      cursor={{ stroke: "#60A5FA", strokeWidth: 1 }}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ color: "#CBD5E1", fontSize: 12 }} />
                     <Area type="monotone" dataKey="p10" stackId="b" stroke="none" fill="transparent" legendType="none" name="p10" />
-                    <Area type="monotone" dataKey="banda" stackId="b" stroke="none" fill="rgba(77,168,255,0.18)" name="Rango p10–p90" />
-                    <Line type="monotone" dataKey="media" stroke="#FF4D5A" strokeWidth={2} dot={false} name="Media" />
+                    <Area type="monotone" dataKey="banda" stackId="b" stroke="none" fill="rgba(96,165,250,0.20)" name="Rango p10–p90" />
+                    <Line type="monotone" dataKey="media" stroke="#FF5263" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#FF5263", stroke: "#F1F5F9" }} name="Media" />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
