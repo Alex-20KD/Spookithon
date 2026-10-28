@@ -20,6 +20,7 @@ import type {
 } from "../types/api";
 import type { TrayectoriaRequest, TrayectoriaResponse } from "../types/trayectoria";
 import type { Brote } from "../types/brotes";
+import { clampDia } from "../utils/epidemiologia";
 
 /**
  * Parámetros editables que la interfaz envía al backend. Usan los MISMOS
@@ -102,6 +103,8 @@ interface SimulationContextValue {
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
+  /** Último día válido: horizonte de la trayectoria cargada (o del escenario ejecutado). */
+  maxDia: number;
   setDia: (d: number | ((prev: number) => number)) => void;
 }
 
@@ -205,6 +208,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       };
       const res = await obtenerTrayectoria(cuerpo);
       setTrayectoria(res);
+      setDiaState((prev) => clampDia(prev, res.dias));
       setEstrategiaSeleccionada(estr);
     } catch (e) {
       setError(
@@ -217,12 +221,12 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
+  const maxDia = trayectoria?.dias ?? paramsEjecutados?.dias ?? params.dias;
+
   const setDia = (d: number | ((prev: number) => number)) => {
     setDiaState((prev) => {
       const next = typeof d === "function" ? (d as (p: number) => number)(prev) : d;
-      const max = params.dias;
-      if (Number.isNaN(next)) return 0;
-      return Math.max(0, Math.min(max, Math.round(next)));
+      return clampDia(Number.isNaN(next) ? 0 : next, maxDia);
     });
   };
 
@@ -298,9 +302,10 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
       comparar,
       cargarTrayectoria,
       dia,
+      maxDia,
       setDia,
     }),
-    [params, meta, resultado, eventos, viaTransmision, brotes, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia],
+    [params, meta, resultado, eventos, viaTransmision, brotes, paramsEjecutados, trayectoria, estrategiaSeleccionada, paramsModificados, cargando, error, dia, maxDia],
   );
 
   return (

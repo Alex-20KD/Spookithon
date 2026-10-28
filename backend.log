@@ -1,0 +1,8 @@
+INFO:     Started server process [14920]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+INFO:     127.0.0.1:64968 - "OPTIONS /comparar HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55622 - "POST /comparar HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60344 - "GET /catalogo HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62253 - "POST /comparar HTTP/1.1" 200 OK
