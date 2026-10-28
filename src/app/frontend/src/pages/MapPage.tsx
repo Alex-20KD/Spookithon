@@ -225,6 +225,7 @@ export default function MapPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 12 }}>
         <div>
+        <div>
           {mapa && (
             <div className="map-container" style={{ height: "70vh" }}>
               <EpidemicMap
@@ -247,68 +248,7 @@ export default function MapPage() {
               : "Modo agregado: ejecuta una simulación para obtener una trayectoria diaria."}
           </div>
 
-          <Card title="Controles de reproducción">
-            <div className="sim-controls">
-              <button className="btn primary" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setReproduciendo((v) => !v)}>
-                {reproduciendo ? "Pausar" : "Reproducir"}
-              </button>
-              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.min(params.dias, dia + 1))}>
-                Avanzar
-              </button>
-              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.max(0, dia - 1))}>
-                Retroceder
-              </button>
-              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setReproduciendo(false); setDia(0); }}>
-                Reiniciar
-              </button>
-            </div>
-            <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
-              <label><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /> Heatmap</label>
-              <label><input type="checkbox" checked={showMovimientos} onChange={(e) => setShowMovimientos(e.target.checked)} /> Movimientos</label>
-              <label><input type="checkbox" checked={showEventos} onChange={(e) => setShowEventos(e.target.checked)} /> Eventos</label>
-            </div>
-            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
-              <label>
-                <span>Línea temporal</span>
-                <span className="val">{dia}</span>
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={paramsEjecutados?.dias ?? params.dias}
-                step={1}
-                value={dia}
-                onChange={(e) => { setReproduciendo(false); setDia(Number(e.target.value)); }}
-              />
-            </div>
-            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
-              <label>
-                <span>Velocidad</span>
-                <span className="val">{velocidad.toFixed(1)}x</span>
-              </label>
-              <input
-                type="range"
-                min={0.5}
-                max={3}
-                step={0.5}
-                value={velocidad}
-                onChange={(e) => setVelocidad(Number(e.target.value))}
-              />
-            </div>
-            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
-              <label>
-                <span>Variable</span>
-              </label>
-              <select value={variable} onChange={(e) => setVariable(e.target.value as any)} style={selectStyle}>
-                <option value="nuevos">Nuevos contagios</option>
-                <option value="acumulados">Infectados acumulados</option>
-                <option value="zombis">Zombis activos</option>
-              </select>
-            </div>
-          </Card>
-        </div>
-
-        <div className="map-side">
+          <div style={{ height: 12 }} />
           <Card title="Centro de decisiones">
             <div style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 12, color: "var(--muted)" }}>Escenario de referencia</label>
@@ -393,6 +333,70 @@ export default function MapPage() {
             </div>
           </Card>
 
+        </div>
+        <div className="map-side">
+          <Card title="Controles de reproducción">
+            <div className="sim-controls">
+              <button className="btn primary" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setReproduciendo((v) => !v)}>
+                {reproduciendo ? "Pausar" : "Reproducir"}
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.min(params.dias, dia + 1))}>
+                Avanzar
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setDia(Math.max(0, dia - 1))}>
+                Retroceder
+              </button>
+              <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setReproduciendo(false); setDia(0); }}>
+                Reiniciar
+              </button>
+            </div>
+            <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
+              <label><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /> Heatmap</label>
+              <label><input type="checkbox" checked={showMovimientos} onChange={(e) => setShowMovimientos(e.target.checked)} /> Movimientos</label>
+              <label><input type="checkbox" checked={showEventos} onChange={(e) => setShowEventos(e.target.checked)} /> Eventos</label>
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Línea temporal</span>
+                <span className="val">{dia}</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={paramsEjecutados?.dias ?? params.dias}
+                step={1}
+                value={dia}
+                onChange={(e) => { setReproduciendo(false); setDia(Number(e.target.value)); }}
+              />
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Velocidad</span>
+                <span className="val">{velocidad.toFixed(1)}x</span>
+              </label>
+              <input
+                type="range"
+                min={0.5}
+                max={3}
+                step={0.5}
+                value={velocidad}
+                onChange={(e) => setVelocidad(Number(e.target.value))}
+              />
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Variable</span>
+              </label>
+              <select value={variable} onChange={(e) => setVariable(e.target.value as any)} style={selectStyle}>
+                <option value="nuevos">Nuevos contagios</option>
+                <option value="acumulados">Infectados acumulados</option>
+                <option value="zombis">Zombis activos</option>
+              </select>
+            </div>
+          </Card>
+        </div>
+
+          <div style={{ height: 12 }} />
           <Card title="Nivel de riesgo">
             <div className="legend">
               {NIVELES.map((n) => (
@@ -404,6 +408,7 @@ export default function MapPage() {
             </div>
           </Card>
 
+          <div style={{ height: 12 }} />
           <Card title="Barrios más afectados">
             <div style={{ overflowX: "auto" }}>
               <table className="table">
@@ -426,7 +431,6 @@ export default function MapPage() {
           </Card>
         </div>
       </div>
-
       <div style={{ height: 16 }} />
       <EventsPanel resultado={resultado} dia={dia} />
     </div>
