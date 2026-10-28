@@ -59,20 +59,6 @@ function nivelRiesgo(ratio: number): string {
 
 
 
-function hexNearestBarrio(lng: number, lat: number, barrios: BarrioMapa[]): string | null {
-  let best: string | null = null;
-  let bestD = Infinity;
-  for (const b of barrios) {
-    if (b.lat == null || b.lng == null) continue;
-    const d = (b.lng - lng) ** 2 + (b.lat - lat) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = b.id;
-    }
-  }
-  return best;
-}
-
 interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
@@ -124,7 +110,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-      map.addSource("zonas", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
@@ -148,18 +133,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         },
       });
 
-      // Halo de barrio (tamaño/color por riesgo).
-      map.addLayer({
-        id: "barrios-halo",
-        type: "circle",
-        source: "barrios",
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["get", "ratio"], 0, 14, 1, 42],
-          "circle-color": ["get", "color"],
-          "circle-opacity": 0.18,
-          "circle-blur": 0.8,
-        },
-      });
       // Núcleo del barrio.
       map.addLayer({
         id: "barrios",
@@ -215,25 +188,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
           "circle-color": "#FF7A45",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#080D13",
-        },
-      });
-
-      map.addLayer({
-        id: "zonas-fill",
-        type: "fill",
-        source: "zonas",
-        paint: {
-          "fill-color": ["get", "color"],
-          "fill-opacity": 0.55,
-        },
-      });
-      map.addLayer({
-        id: "zonas-line",
-        type: "line",
-        source: "zonas",
-        paint: {
-          "line-color": "#263746",
-          "line-width": 1,
         },
       });
 
@@ -322,40 +276,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     (map.getSource("barrios") as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features,
-    });
-
-    // Cuadrícula por barrio (zonas aproximadas, no Voronoi).
-    const maxInfZonas = Math.max(1, ...barrios.map((b) => b.infectados_media ?? 0));
-    const lngs = (conGeo.length ? conGeo : barrios).map((b) => b.lng as number);
-    const lats = (conGeo.length ? conGeo : barrios).map((b) => b.lat as number);
-    const minLng = Math.min(...lngs) - 0.02;
-    const maxLng = Math.max(...lngs) + 0.02;
-    const minLat = Math.min(...lats) - 0.02;
-    const maxLat = Math.max(...lats) + 0.02;
-    const step = 0.006;
-    const zonasFeatures: any[] = [];
-    for (let lat = minLat; lat <= maxLat; lat += step) {
-      for (let lng = minLng; lng <= maxLng; lng += step) {
-        const bid = hexNearestBarrio(lng + step / 2, lat + step / 2, conGeo.length ? conGeo : barrios);
-        if (!bid) continue;
-        const b = barrios.find((x) => x.id === bid);
-        if (!b) continue;
-        const acum = b.infectados_media ?? 0;
-        const ratio = acum / maxInfZonas;
-        const color = acum > 0 ? colorRiesgo(ratio) : "#263746";
-        zonasFeatures.push({
-          type: "Feature",
-          geometry: {
-            type: "Polygon",
-            coordinates: [[[lng, lat], [lng + step, lat], [lng + step, lat + step], [lng, lat + step], [lng, lat]]],
-          },
-          properties: { barrio: bid, color },
-        });
-      }
-    }
-    (map.getSource("zonas") as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features: zonasFeatures,
     });
 
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
