@@ -12,6 +12,7 @@ export interface PuntoGlobal {
   nuevos_focos: { dia: number; barrio_id: string; nuevos_contagios: number; infectados_acumulados: number; zombis_activos: number }[];
   contagios_por_lugar: { lugar_id: number; lng: number; lat: number; nuevos: number; acumulados: number; zombis: number }[];
   eventos: { dia: number; tipo: string; titulo: string; cantidad?: number; dosis?: number; lugares?: number }[];
+  variantes?: { normal: number; acechador: number; chasqueador: number; gordinflon: number };
 }
 
 export interface PuntoBarrio {

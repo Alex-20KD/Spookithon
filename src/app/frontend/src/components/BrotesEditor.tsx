@@ -15,6 +15,9 @@ const TIPOS: { value: Brote["tipo"]; label: string }[] = [
   { value: "zombie_corredor", label: "Zombie corredor" },
   { value: "horda_migratoria", label: "Horda migratoria" },
   { value: "fallo_contencion", label: "Fallo de contención" },
+  { value: "aparicion_acechador", label: "Aparición de acechador" },
+  { value: "aparicion_chasqueador", label: "Aparición de chasqueador" },
+  { value: "aparicion_gordinflon", label: "Aparición de gordinflón" },
 ];
 
 interface Props {
