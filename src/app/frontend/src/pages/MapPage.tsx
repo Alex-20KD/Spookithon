@@ -64,6 +64,11 @@ export default function MapPage() {
     return () => ctrl.abort();
   }, []);
 
+  const setDiaRef = useRef(setDia);
+  const maxDiasRef = useRef(paramsEjecutados?.dias ?? params.dias);
+  setDiaRef.current = setDia;
+  maxDiasRef.current = paramsEjecutados?.dias ?? params.dias;
+
   useEffect(() => {
     if (!reproduciendo) {
       if (timerRef.current != null) {
@@ -73,8 +78,8 @@ export default function MapPage() {
       return;
     }
     timerRef.current = window.setInterval(() => {
-      const maxDias = paramsEjecutados?.dias ?? params.dias;
-    setDia((prev) => {
+      const maxDias = maxDiasRef.current;
+      setDiaRef.current((prev) => {
         if (prev >= maxDias) {
           setReproduciendo(false);
           return 0;
@@ -88,7 +93,7 @@ export default function MapPage() {
         timerRef.current = null;
       }
     };
-  }, [reproduciendo, velocidad, params.dias, setDia]);
+  }, [reproduciendo, velocidad]);
 
   // Cargar trayectoria inicial cuando hay simulación y no hay trayectoria.
   useEffect(() => {

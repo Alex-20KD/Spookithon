@@ -288,6 +288,17 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     setVis("eventos", showEventos);
   }, [mapLoaded, showHeatmap, showMovimientos, showEventos]);
 
+  // Actualizar el peso del heatmap cuando cambia la variable seleccionada.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    if (!map.getLayer("contagios-heat")) return;
+    const prop = variable === "nuevos" ? "nuevos" : variable === "acumulados" ? "acumulados" : "zombis";
+    map.setPaintProperty("contagios-heat", "heatmap-weight", [
+      "interpolate", ["linear"], ["get", prop], 0, 0, 10, 1,
+    ]);
+  }, [mapLoaded, variable]);
+
   // Encuadre: ajusta la cámara a las coordenadas reales (barrios y edificios).
   useEffect(() => {
     const map = mapRef.current;
