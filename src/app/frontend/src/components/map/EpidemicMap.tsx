@@ -46,6 +46,11 @@ function getStyle(): string | typeof DARK_STYLE {
 
 
 
+function paddingMapa(el: HTMLElement | null): number {
+  const lado = el ? Math.min(el.clientWidth, el.clientHeight) : 520;
+  return Math.max(24, Math.round(lado * 0.08));
+}
+
 interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
@@ -64,6 +69,8 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const limitesRef = useRef<[[number, number], [number, number]] | null>(null);
+  const encuadreHechoRef = useRef(false);
 
   // Centro: promedio de coordenadas de los barrios con geo válida, o Manta.
   const conGeo = barrios.filter((b) => b.lat != null && b.lng != null);
@@ -280,6 +287,29 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     setVis("eventos", showEventos);
   }, [mapLoaded, showHeatmap, showMovimientos, showEventos]);
 
+  // Encuadre: ajusta la cámara a las coordenadas reales (barrios y edificios).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const puntos: [number, number][] = [];
+    for (const b of barrios) {
+      if (b.lat != null && b.lng != null) puntos.push([b.lng as number, b.lat as number]);
+    }
+    for (const e of catalogo?.edificios ?? []) puntos.push([e.lng, e.lat]);
+    if (puntos.length === 0) return;
+    const lngs = puntos.map((p) => p[0]);
+    const lats = puntos.map((p) => p[1]);
+    const limites: [[number, number], [number, number]] = [
+      [Math.min(...lngs), Math.min(...lats)],
+      [Math.max(...lngs), Math.max(...lats)],
+    ];
+    limitesRef.current = limites;
+    if (!encuadreHechoRef.current) {
+      encuadreHechoRef.current = true;
+      map.fitBounds(limites, { padding: paddingMapa(containerRef.current), pitch: 0, bearing: 0, duration: 0 });
+    }
+  }, [mapLoaded, barrios, catalogo]);
+
   // Actualizar los datos cuando cambian barrios/catalogo.
   useEffect(() => {
     const map = mapRef.current;
@@ -383,6 +413,11 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
   const centrarManta = () => {
     const map = mapRef.current;
     if (!map) return;
+    const lim = limitesRef.current;
+    if (lim) {
+      map.fitBounds(lim, { padding: paddingMapa(containerRef.current), pitch: 0, bearing: 0, duration: 900 });
+      return;
+    }
     map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 0, bearing: 0, duration: 1200 });
   };
 
