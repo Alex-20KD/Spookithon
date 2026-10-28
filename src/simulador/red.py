@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from . import territorio
 from .catalogo import cargar_catalogo
 
 TIPOS_LUGAR = ("hogar", "colegio", "bus", "mercado", "hospital", "barrio")
@@ -242,14 +243,25 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
             if bpos is not None and bpos < len(coords_lugar) and coords_lugar[bpos] != (-80.72, -0.95):
                 coords_lugar[idx_hogares[h]] = coords_lugar[bpos]
         persona_actual += t
-    # Buses/mercados/hospitales/colegios sin coord: dispersar por barrios.
+    # Paradas de bus (sin entrada en el catálogo): punto situado entre los
+    # centros de dos sectores distintos, aceptado solo si cae dentro del
+    # territorio oficial (descarta el agua de la bahía). Determinista por semilla.
     rng2 = np.random.default_rng(semilla + 999)
     for i, lid in enumerate(ids_lugar):
         if coords_lugar[i] == (-80.72, -0.95):
-            bidx = int(rng2.integers(0, len(barrios)))
-            b = barrios[bidx]
-            coords_lugar[i] = (float(b["lng"]) + float(rng2.uniform(-0.003, 0.003)),
-                               float(b["lat"]) + float(rng2.uniform(-0.003, 0.003)))
+            elegido = None
+            for _ in range(200):
+                a, c = rng2.choice(len(barrios), size=2, replace=False)
+                ba, bc = barrios[int(a)], barrios[int(c)]
+                t = float(rng2.uniform(0.25, 0.75))
+                x = float(ba["lng"]) + t * (float(bc["lng"]) - float(ba["lng"]))
+                y = float(ba["lat"]) + t * (float(bc["lat"]) - float(ba["lat"]))
+                if territorio.dentro(x, y):
+                    elegido = (x, y)
+                    break
+            if elegido is None:
+                elegido = (float(barrios[0]["lng"]), float(barrios[0]["lat"]))
+            coords_lugar[i] = elegido
 
     # Vecinos geográficos (3 más cercanos por distancia euclidiana en lat/lng).
     n_barrios = len(barrios)

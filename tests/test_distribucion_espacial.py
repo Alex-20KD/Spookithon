@@ -90,6 +90,20 @@ def test_ids_y_relaciones_conservadas():
     assert len(cat["barrios"]) == 12 and len(cat["edificios"]) == 10
 
 
+def test_todas_las_coordenadas_de_la_red_estan_dentro_del_geojson():
+    from simulador.red import construir_red
+
+    mod = _cargar_script()
+    anillo = _anillo()
+    red = construir_red(3000, 42)
+    fuera = [
+        (i, lid, x, y)
+        for i, (lid, (x, y)) in enumerate(zip(red.ids_lugar, red.coords_lugar))
+        if not mod.dentro(x, y, anillo)
+    ]
+    assert fuera == [], f"Lugares de la red fuera del territorio: {fuera[:5]} (total {len(fuera)})"
+
+
 def test_generador_es_determinista():
     mod = _cargar_script()
     anillo = _anillo()
