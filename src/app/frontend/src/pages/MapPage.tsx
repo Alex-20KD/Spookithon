@@ -51,6 +51,7 @@ export default function MapPage() {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMovimientos, setShowMovimientos] = useState(false);
   const [showEventos, setShowEventos] = useState(true);
+  const [variable, setVariable] = useState<"nuevos" | "acumulados" | "zombis">("nuevos");
   const cargaIniciadaRef = useRef(false);
 
   const timerRef = useRef<number | null>(null);
@@ -234,6 +235,7 @@ export default function MapPage() {
               showHeatmap={showHeatmap}
               showMovimientos={showMovimientos}
               showEventos={showEventos}
+              variable={variable}
             />
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
@@ -266,6 +268,16 @@ export default function MapPage() {
               <label><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /> Heatmap</label>
               <label><input type="checkbox" checked={showMovimientos} onChange={(e) => setShowMovimientos(e.target.checked)} /> Movimientos</label>
               <label><input type="checkbox" checked={showEventos} onChange={(e) => setShowEventos(e.target.checked)} /> Eventos</label>
+            </div>
+            <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label>
+                <span>Variable</span>
+              </label>
+              <select value={variable} onChange={(e) => setVariable(e.target.value as any)} style={selectStyle}>
+                <option value="nuevos">Nuevos contagios</option>
+                <option value="acumulados">Infectados acumulados</option>
+                <option value="zombis">Zombis activos</option>
+              </select>
             </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>

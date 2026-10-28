@@ -260,19 +260,20 @@ class Simulacion:
         for ev in self._eventos_por_dia.get(dia, []):
             eventos.append({"dia": dia, "tipo": ev.get("tipo", "evento"), "titulo": ev.get("nombre", ev.get("tipo", "evento")), "intensidad": ev.get("intensidad")})
 
-        # Contagios por lugar (agregados).
-        conteo_lugar: dict[int, int] = {}
-        for lid in self._lugares_contagio_hoy:
-            conteo_lugar[lid] = conteo_lugar.get(lid, 0) + 1
-
+        # Contagios por barrio (ubicación territorial), con todas las variables.
         contagios_por_lugar = []
-        for lid, cnt in conteo_lugar.items():
-            coord = self.red.coords_lugar[lid] if lid < len(self.red.coords_lugar) else (-80.72, -0.95)
+        for i, pbarrio in enumerate(por_barrio):
+            if pbarrio["infectados_acumulados"] <= 0:
+                continue
+            lugar_idx = int(self.red.barrios_lugar_idx[i]) if i < len(self.red.barrios_lugar_idx) else -1
+            coord = self.red.coords_lugar[lugar_idx] if 0 <= lugar_idx < len(self.red.coords_lugar) else (-80.72, -0.95)
             contagios_por_lugar.append({
-                "lugar_id": int(lid),
+                "lugar_id": int(lugar_idx),
                 "lng": float(coord[0]),
                 "lat": float(coord[1]),
-                "nuevos": int(cnt),
+                "nuevos": int(pbarrio["nuevos_contagios"]),
+                "acumulados": int(pbarrio["infectados_acumulados"]),
+                "zombis": int(pbarrio["zombis_activos"]),
             })
 
         nuevos_focos = []

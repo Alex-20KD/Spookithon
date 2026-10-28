@@ -57,13 +57,14 @@ interface Props {
   dia?: number;
   movimientos?: { origen: string; destino: string; cantidad: number }[];
   brotes?: Brote[];
-  contagiosPorLugar?: { lugar_id: number; lng: number; lat: number; nuevos: number }[];
+  contagiosPorLugar?: { lugar_id: number; lng: number; lat: number; nuevos: number; acumulados: number; zombis: number }[];
+  variable?: "nuevos" | "acumulados" | "zombis";
   showHeatmap?: boolean;
   showMovimientos?: boolean;
   showEventos?: boolean;
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar, showHeatmap = true, showMovimientos = false, showEventos = true }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar, showHeatmap = true, showMovimientos = false, showEventos = true, variable = "nuevos" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -118,7 +119,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         type: "heatmap",
         source: "contagios",
         paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "nuevos"], 0, 0, 10, 1],
+          "heatmap-weight": ["interpolate", ["linear"], ["get", variable === "nuevos" ? "nuevos" : variable === "acumulados" ? "acumulados" : "zombis"], 0, 0, 10, 1],
           "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 14, 3],
           "heatmap-color": [
             "interpolate", ["linear"], ["heatmap-density"],
@@ -318,7 +319,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     const contagiosFeatures = (contagiosPorLugar ?? []).map((c) => ({
       type: "Feature" as const,
       geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
-      properties: { nuevos: c.nuevos },
+      properties: { nuevos: c.nuevos, acumulados: c.acumulados, zombis: c.zombis },
     }));
     (map.getSource("contagios") as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
@@ -402,7 +403,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features: eventosFeatures as any,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, barrios, catalogo, movimientos, brotes, contagiosPorLugar]);
+  }, [mapLoaded, barrios, catalogo, movimientos, brotes, contagiosPorLugar, variable]);
 
   const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
     const map = mapRef.current;
