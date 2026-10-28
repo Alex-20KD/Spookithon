@@ -266,7 +266,14 @@ a { color: var(--blue); text-decoration: none; }
   font-size: 16px;
 }
 
-.map-side { display: flex; flex-direction: column; gap: 12px; }
+.map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .map-layout { grid-template-columns: 1fr; }
+}
 
 .legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
 .legend-item { display: flex; align-items: center; gap: 8px; color: var(--muted); }
