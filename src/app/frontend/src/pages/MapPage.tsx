@@ -223,7 +223,7 @@ export default function MapPage() {
         </Card>
       )}
 
-      <div className="map-layout">
+      <div className="map-layout" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 360px", gap: 12 }}>
         <div>
         <div>
           {mapa && (
