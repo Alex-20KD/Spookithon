@@ -41,14 +41,6 @@ const BROTES: BroteInfo[] = [
 ];
 
 function ImagenBrote({ b }: { b: BroteInfo }) {
-  const [error, setError] = useState(false);
-  if (error) {
-    return (
-      <div style={{ width: 280, height: 170, background: "#0C141D", border: "1px solid var(--border)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13, textAlign: "center", padding: 8 }}>
-        {b.nombre}
-      </div>
-    );
-  }
   return (
     <img
       src={b.imagen}
@@ -56,7 +48,6 @@ function ImagenBrote({ b }: { b: BroteInfo }) {
       width={280}
       height={170}
       style={{ objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
-      onError={() => setError(true)}
     />
   );
 }
