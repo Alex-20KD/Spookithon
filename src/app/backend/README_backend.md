@@ -1,4 +1,4 @@
-# Backend — Plaga Caracol (API de simulación)
+# Backend — Plaga Zombie: Manabí (API de simulación)
 
 API HTTP con **FastAPI** que expone el simulador ficticio (`src/simulador`) para
 comparar estrategias de vacunación, y que **lee los datos del escenario desde
@@ -50,8 +50,8 @@ docker run --rm -p 8080:8080 -e CORS_ORIGINS="http://localhost:5173,https://mi-f
 | GET    | `/salud`      | `{"estado": "ok"}`                                                 |
 | GET    | `/catalogo`   | Barrios (12) y edificios (10) de la geografía ficticia.            |
 | GET    | `/parametros` | Parámetros editables: valor por defecto, rango y descripción.      |
-| POST   | `/comparar`   | Compara las 5 estrategias: medias, p10/p90, curvas, mejor, R0.     |
-| POST   | `/trayectoria`| Una corrida con registro diario por barrio.                        |
+| POST   | `/comparar`   | Compara las 5 estrategias base (+ `intervenciones`/`eventos` opcionales): medias, p10/p90, curvas, mejor, R0. |
+| POST   | `/trayectoria`| Una corrida con registro diario por barrio y conteo de variantes.  |
 | GET    | `/datos/casos`, `/datos/casos/resumen` | Casos del brote (DynamoDB `plaga-casos`). |
 | GET    | `/datos/curas`, `/datos/sintomas`, `/datos/inventario` | Curas, síntomas e inventario (DynamoDB). |
 | GET    | `/datos/fumigaciones`, `/datos/noticias` | Fumigaciones y noticias (DynamoDB). |
@@ -91,12 +91,27 @@ Respuesta (resumida):
 }
 ```
 
-Las 5 estrategias son: `Nada`, `Azar`, `Centralidad`, `CierresMasCentralidad`, `Anillo`.
+Las 5 estrategias base son: `Nada`, `Azar`, `Centralidad`, `CierresMasCentralidad`, `Anillo`.
+
+Además, `/comparar` y `/trayectoria` aceptan dos campos opcionales:
+
+- `intervenciones`: lista de `{"dia", "estrategia", "duracion"}` que se activan
+  encima de la estrategia base. Valores de `estrategia`: `BloqueoEmergencia`,
+  `VigilanciaIntensiva`, `AislamientoFocalizado`, `ControlEsporas`,
+  `RefuerzoContencion`, `EvacuacionPreventiva` (esta última aún sin efecto).
+- `eventos`: eventos del Brote Sorpresa con día de activación
+  (`brote_secundario`, `zombie_corredor`, `fallo_contencion`, `horda_migratoria`,
+  `aparicion_acechador`, `aparicion_chasqueador`, `aparicion_gordinflon`).
+
+```json
+{ "semilla": 42, "dias": 60, "n_corridas": 50,
+  "intervenciones": [{ "dia": 10, "estrategia": "BloqueoEmergencia", "duracion": 14 }] }
+```
 
 ## Pruebas
 
 ```bash
-PYTHONPATH=src pytest tests/test_backend_api.py tests/test_corridas_detallado.py -q
+PYTHONPATH=src pytest tests/ -q   # 60 pruebas
 ```
 
 ## Notas de diseño

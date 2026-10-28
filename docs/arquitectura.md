@@ -60,8 +60,8 @@ flowchart TB
 2. CloudFront sirve los estáticos desde **S3**: el **dashboard** en `/` y el
    **videojuego** en `/juego/`.
 3. El dashboard llama directamente a la **API FastAPI en ECS** (`POST /comparar`),
-   permitido por CORS. La API corre el simulador (hasta 300 corridas, ~29–42 s, bajo
-   el límite de 60 s del balanceador) y devuelve métricas, curvas p10–p90 y R0.
+   permitido por CORS. La API corre el simulador (hasta 300 corridas, ~56 s con
+   2 vCPU, bajo el límite de 60 s del balanceador) y devuelve métricas, curvas p10–p90 y R0.
 4. La **imagen** del contenedor vive en **ECR**; ECS la despliega.
 5. **DynamoDB** (`plaga-*`) guarda datos; **CloudWatch** recoge logs; **IAM**
    da permisos mínimos; **AWS Budgets** vigila el costo.

@@ -25,18 +25,17 @@ Precio de referencia (Fargate, us-east-1): **~$0.04046 por vCPU·hora** y
 
 | Configuración | Cálculo por hora | Por día | Por mes (730 h) |
 |---|---|---|---|
-| 1 vCPU / 2 GB (inicial) | 1×0.04046 + 2×0.004445 = $0.0494 | ~$1.18 | **~$36.0** |
-| 2 vCPU / 4 GB | 2×0.04046 + 4×0.004445 = $0.0987 | ~$2.37 | **~$72.1** |
-| 4 vCPU / 8 GB | 4×0.04046 + 8×0.004445 = $0.1974 | ~$4.74 | **~$144.1** |
+| 1 vCPU / 2 GB (inicial) | 1×0.04046 + 2×0.004445 = $0.0494 | ~$1.18 | ~$36.0 |
+| **2 vCPU / 4 GB (actual, en ECS)** | 2×0.04046 + 4×0.004445 = $0.0987 | **~$2.37** | **~$72.1** |
+| 4 vCPU / 8 GB | 4×0.04046 + 8×0.004445 = $0.1974 | ~$4.74 | ~$144.1 |
 
-> **TODO (equipo): marcar la configuración que quedó en ECS** y usar esa fila en
-> la tabla de abajo.
+La configuración desplegada es **2 vCPU / 4 GB**.
 
 ### Resto de servicios
 
 | Servicio | Uso estimado (mensual) | Precio unitario (aprox.) | Subtotal |
 |---|---|---|---|
-| **Amazon ECS Express** (cómputo) | 1 tarea 24×7 | ver tabla anterior | **$36–144** según config. |
+| **Amazon ECS Express** (cómputo) | 1 tarea 2 vCPU / 4 GB, 24×7 | $0.0987 / hora | **~$72.10** |
 | **Amazon S3** (almacenamiento) | ~10 MB de builds estáticos | ~$0.023 / GB·mes | **~$0.01** |
 | **Amazon S3** (peticiones) | miles de GET | ~$0.0004 / 1.000 GET | **~$0.01** |
 | **Amazon CloudFront** (transferencia) | ~2 GB salida/mes | ~$0.085 / GB (primeros 10 TB) | **~$0.17** |
@@ -45,7 +44,7 @@ Precio de referencia (Fargate, us-east-1): **~$0.04046 por vCPU·hora** y
 | **Amazon DynamoDB** (bajo demanda) | pocas lecturas/escrituras + <1 GB | pago por uso | **~$0.10** |
 | **Amazon CloudWatch** (logs) | pocos MB de logs | ~$0.50 / GB ingerido | **~$0.05** |
 | **AWS IAM / AWS Budgets** | — | sin costo | **$0.00** |
-| | | **TOTAL estimado** | **≈ cómputo ECS + ~$0.4 / mes** |
+| | | **TOTAL estimado** | **≈ $72.5 / mes** |
 
 > **Nota clave sobre el costo:** casi todo el gasto es el **contenedor de ECS
 > encendido 24×7**. El resto (S3, CloudFront, ECR, DynamoDB, CloudWatch) suma
@@ -73,7 +72,7 @@ Estimación del gasto real (≈ días de uso del contenedor ECS):
 
 | Concepto | Detalle | Gasto aprox. |
 |---|---|---|
-| ECS Express | ~X días × costo por día de la configuración actual (tabla A) | **~$ (ajustar)** |
+| ECS Express | días encendido × ~$1.18/día (1 vCPU) o ~$2.37/día (2 vCPU) | **~$ (ajustar con Cost Explorer)** |
 | S3 + CloudFront + ECR + DynamoDB | tráfico de demo | **< $0.20** |
 | | **Total real del evento** | **~$ (ajustar con Cost Explorer)** |
 

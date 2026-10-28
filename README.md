@@ -20,11 +20,13 @@ al azar*. Incluye un panel web (dashboard) y un videojuego de estrategia.
 - Simula día a día una epidemia tipo **SEIR sobre un grafo de contactos** (estados
   Sano · Incubando · Portador · Zombi · Inmune).
 - Ejecuta **múltiples corridas** y agrega resultados con **media y banda p10–p90**.
-- Compara **5 estrategias** y devuelve la mejor con una recomendación legible.
+- Compara **5 estrategias base** y devuelve la mejor con una recomendación legible.
+- Permite sumar **6 intervenciones especiales** con día de inicio y duración.
+- Permite simular **eventos de Brote Sorpresa** y **variantes de zombi**.
 - Permite cambiar parámetros en caliente (sliders) para el **"Brote Sorpresa"**.
 - Es **reproducible**: misma semilla + mismos parámetros → mismo resultado.
 
-### Estrategias comparadas
+### Estrategias base (comparadas en cada `/comparar`)
 
 | Estrategia | Descripción |
 |---|---|
@@ -33,6 +35,33 @@ al azar*. Incluye un panel web (dashboard) y un videojuego de estrategia.
 | `Centralidad` | Vacuna a los más conectados de la red. |
 | `CierresMasCentralidad` | Cierra lugares clave + vacuna por centralidad. |
 | `Anillo` | Vacunación en anillo alrededor de portadores detectados. |
+
+### Intervenciones especiales (campo `intervenciones`: `{dia, estrategia, duracion}`)
+
+Se activan desde un día y durante N días, **encima** de la estrategia base.
+
+| Intervención | Efecto en el modelo |
+|---|---|
+| `BloqueoEmergencia` | Reduce la movilidad de los zombis entre barrios al 20%. |
+| `VigilanciaIntensiva` | Duplica la probabilidad diaria de detectar zombis. |
+| `AislamientoFocalizado` | Solo ~70% de las personas acude a cada lugar (menos contactos). |
+| `ControlEsporas` | Reduce a la mitad el contagio por esporas. |
+| `RefuerzoContencion` | Anula la pérdida de eficacia de la vacuna durante un "fallo de contención". |
+| `EvacuacionPreventiva` | Declarada en la API, **aún sin efecto en el modelo** (ver Limitaciones). |
+
+### Eventos de Brote Sorpresa y variantes (campo `eventos`)
+
+Eventos con día de activación: `brote_secundario`, `zombie_corredor`,
+`fallo_contencion` (la vacuna rinde la mitad), `horda_migratoria` y la aparición
+de variantes de zombi: **acechador** (más difícil de detectar), **chasqueador** y
+**gordinflón** (más contagio por esporas). `/trayectoria` reporta los zombis
+activos de cada variante por día.
+
+### Pantallas del dashboard
+
+Dashboard ejecutivo · Mapa epidemiológico (animado por día, con intervenciones) ·
+Simulador · Estrategias · **Brotes y Variantes** · Resultados (curvas p10–p90 y
+matriz de brotes × estrategias) · botón **Jugar** al videojuego.
 
 ---
 
@@ -172,8 +201,8 @@ lugar de inicio.
 ### Configuración del backend en ECS Express (us-east-1)
 
 - Imagen: repositorio ECR privado `plaga-backend` (construida desde `Dockerfile`).
-- Cómputo: **TODO (equipo): vCPU / GB configurados en ECS** — se amplió desde
-  1 vCPU / 2 GB para llegar a 300 corridas (ver tabla de tiempos). 1 tarea (min=max=1).
+- Cómputo: **2 vCPU / 4 GB**, 1 tarea (min=max=1). Se amplió desde 1 vCPU / 2 GB
+  para llegar a 300 corridas (ver tabla de tiempos).
 - Puerto del contenedor: `8080` · Health check: `/salud`.
 - Rol de infraestructura: política inline con permisos de red + balanceo
   (`ec2:*NetworkInterface*`, `elasticloadbalancing:*`) — se añadió porque el rol
@@ -186,26 +215,27 @@ lugar de inicio.
 | Variable | Valor en AWS | Para qué |
 |---|---|---|
 | `EJECUTOR_MODO` | `procesos` | Pool de procesos (paraleliza en varias vCPU). `hilos` disponible para entornos con muy poca CPU. |
-| `MAX_WORKERS` | `TODO (equipo)` | Procesos del pool (acorde a las vCPU). |
+| `MAX_WORKERS` | definido en ECS | Procesos del pool (acorde a las 2 vCPU). |
 | `N_CORRIDAS_MAX` | `300` | Tope de corridas por petición. |
 | `CORS_ORIGINS` | `https://d2n10k2c1hlb54.cloudfront.net` | Orígenes permitidos (nunca `*`). |
 
-### Rendimiento: 300 corridas bajo el límite de 60 s
+### Rendimiento y límite de 60 s
 
 El balanceador gestionado de **ECS Express corta las respuestas a los 60 s**, así
 que `POST /comparar` tiene que terminar antes. Tiempos **medidos en producción**:
 
-| Escenario | 1 vCPU / 2 GB (inicial) | Cómputo ampliado (actual) |
+| Escenario | 1 vCPU / 2 GB (inicial) | 2 vCPU / 4 GB (actual) |
 |---|---|---|
-| 100 corridas, 60 días | ~32 s | **~11 s** ✅ |
-| 150 corridas, 60 días | ~54 s | — |
-| **300 corridas, 60 días** (semilla 42) | >60 s ❌ 504 | **~29 s** ✅ |
-| **Peor caso:** 300 corridas, 100 días, contagio ×2, inicio en mercado | — | **~42 s** ✅ |
+| 100 corridas, 60 días | ~32 s | **~19 s** ✅ |
+| **300 corridas, 60 días** | >60 s ❌ 504 | **~56 s** ✅ (poco margen) |
+| **Peor caso:** 300 corridas, 100 días, contagio ×2, inicio en mercado | — | >60 s ❌ 504 |
 
-Con 1 vCPU el tope tuvo que fijarse en 150 corridas; al ampliar el cómputo se
-subió a **300** (`N_CORRIDAS_MAX=300`), lo que cumple el requisito de "300 o más
-corridas" incluso en el peor caso del Brote Sorpresa, con ~18 s de margen. El
-frontend lee el tope de `GET /parametros`, así que el slider se ajusta solo.
+Con 1 vCPU el tope tuvo que fijarse en 150 corridas; con 2 vCPU se subió a
+**300** (`N_CORRIDAS_MAX=300`), que cumple el requisito de "300 o más corridas" en
+el escenario estándar. En escenarios extremos (horizonte de 100 días con el
+contagio duplicado) 300 corridas superan los 60 s: para esos casos se recomienda
+usar **≤ 200 corridas** o ampliar el cómputo. El frontend lee el tope de
+`GET /parametros`, así que el slider se ajusta solo.
 
 **Mejora futura:** para miles de corridas, convertir `POST /comparar` en ejecución
 **asíncrona** (job id + polling) o precálculo (Lambda/Step Functions), eliminando
@@ -218,8 +248,8 @@ el límite de respuesta síncrona.
 | GET | `/salud` | — | `{"estado": "ok"}` |
 | GET | `/catalogo` | simulador | Barrios y edificios de Manta (ficticios). |
 | GET | `/parametros` | simulador | Parámetros editables: por defecto, rango y topes. |
-| POST | `/comparar` | simulador (memoria) | Compara las 5 estrategias: media, p10/p90, curvas, mejor estrategia, recomendación y **R0 calibrado**. |
-| POST | `/trayectoria` | simulador (memoria) | Una corrida con registro diario por barrio (mapa animado). |
+| POST | `/comparar` | simulador (memoria) | Compara las 5 estrategias base (más `intervenciones` y `eventos` opcionales): media, p10/p90, curvas, mejor estrategia, recomendación y **R0 calibrado**. |
+| POST | `/trayectoria` | simulador (memoria) | Una corrida con registro diario por barrio y conteo de variantes (mapa animado). |
 | GET | `/datos/casos` | **DynamoDB** `plaga-casos` | Casos registrados del brote. |
 | GET | `/datos/casos/resumen` | **DynamoDB** `plaga-casos` | Total de casos y conteo por estado y por barrio. |
 | GET | `/datos/curas` | **DynamoDB** `plaga-curas` | Curas/antivirales y su eficacia. |
@@ -262,7 +292,10 @@ cálculo visible y el gasto real del evento.
 PYTHONPATH=src pytest tests/ -q
 ```
 
-Incluye, entre otras, la prueba de rigor **"la vacuna solo va a sanos"**.
+**60 pruebas** (Pytest). Incluyen, entre otras, la prueba de rigor **"la vacuna
+solo va a sanos"**, la reproducibilidad por semilla, la API y los eventos/variantes
+del Brote Sorpresa (`tests/test_eventos_variantes.py`). El videojuego tiene sus
+propias pruebas con Vitest (`npm test` en `videojuego-plaga-zombie`).
 
 ---
 
@@ -292,8 +325,11 @@ Dockerfile       imagen del backend
   **supuestos de diseño**, no datos reales.
 - Los zombis no desaparecen en el nivel base.
 - `POST /comparar` es **síncrono**: el balanceador de ECS Express corta a los 60 s.
-  Con el cómputo actual, 300 corridas tardan ~29–42 s; muchas más corridas
-  requerirían ejecución asíncrona (ver §6).
+  Con 2 vCPU, 300 corridas tardan ~56 s en el escenario estándar, pero en
+  escenarios extremos (100 días, contagio ×2) superan el límite. Escalar a más
+  corridas requeriría ejecución asíncrona o más cómputo (ver §6).
+- La intervención `EvacuacionPreventiva` existe en la API pero **todavía no tiene
+  efecto** en el modelo (su bandera no se usa en la simulación).
 - La simulación no lee DynamoDB: los datos del escenario se sirven aparte en
   `/datos/*`; el motor de simulación genera su propia red en memoria.
 - Usuarios IAM **sin MFA** (ver §6).
