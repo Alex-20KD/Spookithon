@@ -4,6 +4,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BarrioMapa, CatalogoResponse } from "../../types/api";
 import type { Brote } from "../../types/brotes";
+import barriosGeoRaw from "../../data/barrios.geojson?raw";
 
 // Config oficial para Vite: evita "Worker failed to load".
 maplibregl.setWorkerUrl(
@@ -110,6 +111,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("zonas", { type: "geojson", data: JSON.parse(barriosGeoRaw) as any });
       map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
@@ -188,6 +190,25 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
           "circle-color": "#FF7A45",
           "circle-stroke-width": 2,
           "circle-stroke-color": "#080D13",
+        },
+      });
+
+      map.addLayer({
+        id: "zonas-fill",
+        type: "fill",
+        source: "zonas",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": 0.55,
+        },
+      });
+      map.addLayer({
+        id: "zonas-line",
+        type: "line",
+        source: "zonas",
+        paint: {
+          "line-color": "#263746",
+          "line-width": 1,
         },
       });
 
@@ -277,6 +298,17 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       type: "FeatureCollection",
       features,
     });
+
+    const maxInfZonas = Math.max(1, ...barrios.map((b) => b.infectados_media ?? 0));
+    const zonasData = JSON.parse(barriosGeoRaw);
+    for (const f of zonasData.features) {
+      const bid = f.properties.barrio_id;
+      const b = barrios.find((x) => x.id === bid);
+      const acum = b?.infectados_media ?? 0;
+      const ratio = acum / maxInfZonas;
+      f.properties.color = acum > 0 ? colorRiesgo(ratio) : "#263746";
+    }
+    (map.getSource("zonas") as maplibregl.GeoJSONSource)?.setData(zonasData);
 
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
       type: "Feature" as const,
