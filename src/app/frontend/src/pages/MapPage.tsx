@@ -52,6 +52,11 @@ export default function MapPage() {
   const [showMovimientos, setShowMovimientos] = useState(false);
   const [showEventos, setShowEventos] = useState(true);
   const [variable, setVariable] = useState<"nuevos" | "acumulados" | "zombis">("nuevos");
+
+  const contagiosDia = trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? [];
+  const totalVar = contagiosDia.reduce((a, c) => a + (variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis), 0);
+  const maxVar = contagiosDia.reduce((a, c) => Math.max(a, variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis), 0);
+  const focosVar = contagiosDia.filter((c) => (variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis) > 0).length;
   const cargaIniciadaRef = useRef(false);
 
   const timerRef = useRef<number | null>(null);
@@ -284,6 +289,12 @@ export default function MapPage() {
                 <option value="zombis">Zombis activos</option>
               </select>
             </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", display: "grid", gap: 2 }}>
+            <div>Variable: <strong>{variable}</strong></div>
+            <div>Total geolocalizado: <strong>{num(totalVar)}</strong></div>
+            <div>Valor maximo por foco: <strong>{num(maxVar)}</strong></div>
+            <div>Focos con valor &gt; 0: <strong>{focosVar}</strong></div>
+          </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>
                 <span>Línea temporal</span>
