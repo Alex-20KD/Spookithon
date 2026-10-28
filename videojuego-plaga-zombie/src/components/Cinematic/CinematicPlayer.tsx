@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CinematicScene, { SceneData } from './CinematicScene';
+import { assetUrl } from '../../utils/assetUrl';
 import './CinematicPlayer.css';
 
 interface CinematicPlayerProps {
@@ -11,35 +12,35 @@ interface CinematicPlayerProps {
 const CINEMATIC_SCENES: SceneData[] = [
   {
     id: 1,
-    image: '/assets/cinematica/escena1.svg', // Cambiar a .png cuando tengas la imagen
+    image: assetUrl('assets/cinematica/escena1.svg'), // Cambiar a .png cuando tengas la imagen
     text: 'Noche en el puerto de Manta. Un barco carguero se acerca lentamente a la costa. Algo no está bien...',
     cameraEffect: 'zoom-in',
     duration: 8
   },
   {
     id: 2,
-    image: '/assets/cinematica/escena2.svg', // Cambiar a .png cuando tengas la imagen
+    image: assetUrl('assets/cinematica/escena2.svg'), // Cambiar a .png cuando tengas la imagen
     text: 'Un marinero enfermo desciende del barco. Sus ojos brillan con una luz antinatural. La infección ha llegado.',
     cameraEffect: 'pan-right',
     duration: 8
   },
   {
     id: 3,
-    image: '/assets/cinematica/escena3.svg', // Cambiar a .png cuando tengas la imagen
+    image: assetUrl('assets/cinematica/escena3.svg'), // Cambiar a .png cuando tengas la imagen
     text: '⚠️ ÚLTIMA HORA: Brote desconocido en Manta. Las autoridades piden calma mientras investigan los primeros casos.',
     cameraEffect: 'zoom-out',
     duration: 8
   },
   {
     id: 4,
-    image: '/assets/cinematica/escena4.svg', // Cambiar a .png cuando tengas la imagen
+    image: assetUrl('assets/cinematica/escena4.svg'), // Cambiar a .png cuando tengas la imagen
     text: 'Portoviejo cae en el caos. Las calles se llenan de sombras. El virus se expande más rápido de lo esperado.',
     cameraEffect: 'pan-left',
     duration: 8
   },
   {
     id: 5,
-    image: '/assets/cinematica/escena5.svg', // Cambiar a .png cuando tengas la imagen
+    image: assetUrl('assets/cinematica/escena5.svg'), // Cambiar a .png cuando tengas la imagen
     text: 'Sala de emergencias del gobierno. El mapa de Manabí se tiñe de rojo. La provincia te necesita. ¿Podrás salvarla?',
     cameraEffect: 'zoom-in',
     duration: 8
@@ -55,7 +56,7 @@ const CinematicPlayer: React.FC<CinematicPlayerProps> = ({ onComplete }) => {
 
   useEffect(() => {
     // Intentar cargar y reproducir música de fondo
-    const audio = new Audio('/assets/audio/intro-music.mp3');
+    const audio = new Audio(assetUrl('assets/audio/intro-music.mp3'));
     audio.volume = 0.3;
     audio.loop = false;
     

@@ -1,6 +1,8 @@
 // Efectos de sonido cortos. Si existe public/assets/audio/sfx-<nombre>.mp3 se usa ese archivo;
 // si no, se sintetiza el sonido con la Web Audio API.
 
+import { assetUrl } from '../utils/assetUrl';
+
 export type SoundName = 'action' | 'error' | 'infect' | 'event' | 'mission' | 'message' | 'victory' | 'defeat' | 'boss' | 'click';
 
 const MUTE_KEY = 'sound-muted';
@@ -107,7 +109,7 @@ function synth(name: SoundName): void {
 function checkFile(name: SoundName): void {
   if (fileStatus.has(name) || typeof fetch === 'undefined') return;
   fileStatus.set(name, 'checking');
-  fetch(`/assets/audio/sfx-${name}.mp3`, { method: 'HEAD' })
+  fetch(assetUrl(`assets/audio/sfx-${name}.mp3`), { method: 'HEAD' })
     .then(r => {
       // El servidor de Vite responde index.html para rutas inexistentes: hay que mirar el tipo
       const type = r.headers.get('content-type') ?? '';
@@ -125,7 +127,7 @@ export function playSound(name: SoundName): void {
 
   checkFile(name);
   if (fileStatus.get(name) === 'yes') {
-    const audio = new Audio(`/assets/audio/sfx-${name}.mp3`);
+    const audio = new Audio(assetUrl(`assets/audio/sfx-${name}.mp3`));
     audio.volume = 0.5;
     audio.play().catch(() => synth(name));
     return;
