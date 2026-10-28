@@ -111,17 +111,19 @@ export default function MapPage() {
 
   if (trayectoria) {
 
-    barriosDia = trayectoria.serie_por_barrio.map((b) => {
-      const punto = b.puntos[dia] ?? b.puntos[b.puntos.length - 1];
-      const acum = punto?.infectados_acumulados ?? 0;
-      return {
-        id: b.id,
-        nombre: b.nombre,
-        lat: b.lat,
-        lng: b.lng,
-        infectados_media: acum,
-      } as BarrioMapa;
-    });
+    barriosDia = trayectoria.serie_por_barrio
+      .filter((b) => b.primer_dia_infeccion == null || b.primer_dia_infeccion <= dia)
+      .map((b) => {
+        const punto = b.puntos[dia] ?? b.puntos[b.puntos.length - 1];
+        const acum = punto?.infectados_acumulados ?? 0;
+        return {
+          id: b.id,
+          nombre: b.nombre,
+          lat: b.lat,
+          lng: b.lng,
+          infectados_media: acum,
+        } as BarrioMapa;
+      });
   } else if (resultado?.mapa) {
     barriosDia = resultado.mapa.barrios;
   }

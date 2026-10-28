@@ -19,6 +19,7 @@ export interface PuntoBarrio {
   infectados_acumulados: number;
   nuevos_contagios: number;
   inmunes: number;
+  primer_dia_infeccion: number | null;
 }
 
 export interface SerieBarrio {
@@ -26,6 +27,7 @@ export interface SerieBarrio {
   nombre: string;
   lat: number | null;
   lng: number | null;
+  primer_dia_infeccion: number | null;
   puntos: PuntoBarrio[];
 }
 

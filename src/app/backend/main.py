@@ -288,16 +288,23 @@ def _armar_trayectoria(resumen: dict, params: Params, cfg) -> dict:
                 "infectados_acumulados": p["infectados_acumulados"],
                 "nuevos_contagios": p["nuevos_contagios"],
                 "inmunes": p["inmunes"],
+                "primer_dia_infeccion": p.get("primer_dia_infeccion"),
             })
 
     por_barrio_series = []
     for bid, puntos in series.items():
         base = barrios_cat.get(bid, {})
+        primer_dia = None
+        for pt in puntos:
+            if pt.get("infectados_acumulados", 0) > 0:
+                primer_dia = pt["dia"]
+                break
         por_barrio_series.append({
             "id": bid,
             "nombre": base.get("nombre", bid),
             "lat": base.get("lat"),
             "lng": base.get("lng"),
+            "primer_dia_infeccion": primer_dia,
             "puntos": puntos,
         })
 

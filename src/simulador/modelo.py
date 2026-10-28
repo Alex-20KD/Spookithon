@@ -132,6 +132,7 @@ class Simulacion:
         self._ids_barrio = list(red.barrios_ids)
         self._dosis_prev = 0
         self._barrios_con_contagio: set[str] = set()
+        self._primer_dia_barrio: dict[str, int] = {}
         self._movimientos_hoy: list[dict] = []
         self._zombie_corredor_activo = False
         self._fallo_contencion_activo = False
@@ -254,6 +255,9 @@ class Simulacion:
         nuevos_focos = []
         for pbarrio in por_barrio:
             bid = pbarrio["barrio_id"]
+            if pbarrio["infectados_acumulados"] > 0 and bid not in self._primer_dia_barrio:
+                self._primer_dia_barrio[bid] = int(dia)
+            pbarrio["primer_dia_infeccion"] = self._primer_dia_barrio.get(bid)
             if pbarrio["infectados_acumulados"] > 0 and bid not in self._barrios_con_contagio:
                 self._barrios_con_contagio.add(bid)
                 nuevos_focos.append({
