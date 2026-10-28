@@ -39,24 +39,27 @@ al azar*. Incluye un panel web (dashboard) y un videojuego de estrategia.
 ## 2. Arquitectura
 
 ```
-Usuario ──HTTPS──► [ CloudFront ]
-                      │  /          → S3 (dashboard React/Vite)   TODO: desplegar
-                      │  /juego/    → S3 (videojuego React/Phaser) TODO: desplegar
-                      │  /api/*      → Backend FastAPI (ECS Express) ✅ desplegado
+Usuario ──HTTPS──► [ CloudFront  d2n10k2c1hlb54.cloudfront.net ]
+                      │  /          → S3 (dashboard React/Vite)
+                      │  /juego/    → S3 (videojuego React/Phaser)
                       ▼
-            [ ECS Express · contenedor FastAPI :8080 ]
-                      │  corre el simulador (pool de procesos)
-                      ▼
-            IAM (mínimo privilegio) · CloudWatch Logs · DynamoDB (plaga-*)
+   Dashboard ──HTTPS + CORS──► [ ECS Express · contenedor FastAPI :8080 ]
+                                    │  simulador SEIR en memoria (pool de procesos)
+                                    │  lectura de datos del escenario
+                                    ▼
+            DynamoDB (plaga-*) · IAM (mínimo privilegio) · CloudWatch Logs
 ```
 
 - **Backend:** FastAPI + uvicorn en un contenedor (ver `Dockerfile`), desplegado en
-  **Amazon ECS Express Mode** (us-east-1). El simulador vive en `src/simulador`.
-- **Frontend (dashboard):** React + TypeScript + Vite (`src/app/frontend`).
-- **Videojuego:** React + Phaser + Vite (`videojuego-plaga-zombie`), app aparte.
-- Diagrama fuente en `docs/arquitectura.drawio`.
-
-<!-- TODO (equipo): exportar docs/arquitectura.png/.svg desde el .drawio actualizado. -->
+  **Amazon ECS Express Mode** (us-east-1). Imagen en **Amazon ECR**. El simulador
+  vive en `src/simulador`.
+- **Datos:** 6 tablas **DynamoDB** `plaga-*` (bajo demanda) con datos ficticios del
+  escenario, que el backend lee en los endpoints `/datos/*` (ver §6).
+- **Frontend (dashboard):** React + TypeScript + Vite (`src/app/frontend`), en S3.
+- **Videojuego:** React + Phaser + Vite (`videojuego-plaga-zombie`), app aparte en S3.
+- El dashboard llama **directamente** a la URL de ECS (CORS restringido al dominio
+  de CloudFront); CloudFront solo sirve los estáticos.
+- Diagrama completo (Mermaid, público vs. privado): [`docs/arquitectura.md`](docs/arquitectura.md).
 
 ---
 
@@ -66,9 +69,10 @@ Usuario ──HTTPS──► [ CloudFront ]
 
 | Servicio | URL |
 |---|---|
-| Backend (API) | `https://pl-12ea63fa7ffd4e47974b58d488d89159.ecs.us-east-1.on.aws` |
-| Dashboard | `TODO (equipo): URL de CloudFront` |
-| Videojuego | `TODO (equipo): URL de CloudFront + /juego/` |
+| **Dashboard (demo)** | <https://d2n10k2c1hlb54.cloudfront.net/> |
+| Videojuego | <https://d2n10k2c1hlb54.cloudfront.net/juego/index.html> |
+| Backend (API) | <https://pl-12ea63fa7ffd4e47974b58d488d89159.ecs.us-east-1.on.aws> |
+| Documentación interactiva de la API | <https://pl-12ea63fa7ffd4e47974b58d488d89159.ecs.us-east-1.on.aws/docs> |
 
 Comprobación rápida de la API:
 
@@ -168,40 +172,66 @@ lugar de inicio.
 ### Configuración del backend en ECS Express (us-east-1)
 
 - Imagen: repositorio ECR privado `plaga-backend` (construida desde `Dockerfile`).
-- Cómputo: **1 vCPU / 2 GB**, 1 tarea (min=max=1).
+- Cómputo: **TODO (equipo): vCPU / GB configurados en ECS** — se amplió desde
+  1 vCPU / 2 GB para llegar a 300 corridas (ver tabla de tiempos). 1 tarea (min=max=1).
 - Puerto del contenedor: `8080` · Health check: `/salud`.
 - Rol de infraestructura: política inline con permisos de red + balanceo
   (`ec2:*NetworkInterface*`, `elasticloadbalancing:*`) — se añadió porque el rol
   por defecto de Express venía sin permisos suficientes (fallaba el PROVISIONING).
+- Rol de tarea (`ecsTaskExecutionRole`): con la política `plaga-dynamodb-acceso`
+  (lectura/escritura solo en tablas `plaga-*` y sus índices).
 
 ### Variables de entorno del backend
 
 | Variable | Valor en AWS | Para qué |
 |---|---|---|
-| `EJECUTOR_MODO` | `procesos` | Pool de procesos (paraleliza con ≥1 vCPU). `hilos` disponible para entornos con muy poca CPU. |
-| `MAX_WORKERS` | `2` | Procesos del pool (acorde a 1 vCPU). |
-| `N_CORRIDAS_MAX` | `150` | Tope de corridas por petición (ver limitación abajo). |
-| `CORS_ORIGINS` | `TODO: dominio CloudFront` | Orígenes permitidos (nunca `*`). |
+| `EJECUTOR_MODO` | `procesos` | Pool de procesos (paraleliza en varias vCPU). `hilos` disponible para entornos con muy poca CPU. |
+| `MAX_WORKERS` | `TODO (equipo)` | Procesos del pool (acorde a las vCPU). |
+| `N_CORRIDAS_MAX` | `300` | Tope de corridas por petición. |
+| `CORS_ORIGINS` | `https://d2n10k2c1hlb54.cloudfront.net` | Orígenes permitidos (nunca `*`). |
 
-### Limitación conocida: timeout del balanceador
+### Rendimiento: 300 corridas bajo el límite de 60 s
 
-El balanceador gestionado de **ECS Express corta las respuestas a los 60 s**.
-Con 1 vCPU, el tiempo de cómputo escala así (semilla 42, 60 días):
+El balanceador gestionado de **ECS Express corta las respuestas a los 60 s**, así
+que `POST /comparar` tiene que terminar antes. Tiempos **medidos en producción**:
 
-| Corridas | Tiempo aprox. | Resultado |
+| Escenario | 1 vCPU / 2 GB (inicial) | Cómputo ampliado (actual) |
 |---|---|---|
-| 50 (default) | ~17 s | ✅ |
-| 100 | ~32 s | ✅ |
-| 150 (tope) | ~54 s | ✅ |
-| 300 | >60 s | ❌ 504 (corte del balanceador) |
+| 100 corridas, 60 días | ~32 s | **~11 s** ✅ |
+| 150 corridas, 60 días | ~54 s | — |
+| **300 corridas, 60 días** (semilla 42) | >60 s ❌ 504 | **~29 s** ✅ |
+| **Peor caso:** 300 corridas, 100 días, contagio ×2, inicio en mercado | — | **~42 s** ✅ |
 
-Por eso el tope efectivo se fijó en **150 corridas** (`N_CORRIDAS_MAX=150`), que
-cabe bajo el límite y aún produce **bandas p10–p90 estables**. El frontend lee
-este tope de `GET /parametros`, así que el slider se ajusta solo.
+Con 1 vCPU el tope tuvo que fijarse en 150 corridas; al ampliar el cómputo se
+subió a **300** (`N_CORRIDAS_MAX=300`), lo que cumple el requisito de "300 o más
+corridas" incluso en el peor caso del Brote Sorpresa, con ~18 s de margen. El
+frontend lee el tope de `GET /parametros`, así que el slider se ajusta solo.
 
-**Mejora futura (documentada, no implementada):** para 300+ corridas, convertir
-`POST /comparar` en ejecución **asíncrona** (job id + polling) o precálculo
-(p. ej. Lambda/Step Functions), eliminando el límite de respuesta síncrona.
+**Mejora futura:** para miles de corridas, convertir `POST /comparar` en ejecución
+**asíncrona** (job id + polling) o precálculo (Lambda/Step Functions), eliminando
+el límite de respuesta síncrona.
+
+### Endpoints de la API
+
+| Método | Ruta | Fuente | Qué devuelve |
+|---|---|---|---|
+| GET | `/salud` | — | `{"estado": "ok"}` |
+| GET | `/catalogo` | simulador | Barrios y edificios de Manta (ficticios). |
+| GET | `/parametros` | simulador | Parámetros editables: por defecto, rango y topes. |
+| POST | `/comparar` | simulador (memoria) | Compara las 5 estrategias: media, p10/p90, curvas, mejor estrategia, recomendación y **R0 calibrado**. |
+| POST | `/trayectoria` | simulador (memoria) | Una corrida con registro diario por barrio (mapa animado). |
+| GET | `/datos/casos` | **DynamoDB** `plaga-casos` | Casos registrados del brote. |
+| GET | `/datos/casos/resumen` | **DynamoDB** `plaga-casos` | Total de casos y conteo por estado y por barrio. |
+| GET | `/datos/curas` | **DynamoDB** `plaga-curas` | Curas/antivirales y su eficacia. |
+| GET | `/datos/sintomas` | **DynamoDB** `plaga-sintomas` | Síntomas por fase de la enfermedad. |
+| GET | `/datos/inventario` | **DynamoDB** `plaga-inventario` | Inventario de curas por centro. |
+| GET | `/datos/fumigaciones` | **DynamoDB** `plaga-fumigaciones` | Fumigaciones programadas/hechas. |
+| GET | `/datos/noticias` | **DynamoDB** `plaga-noticias` | Noticias del brote. |
+
+La simulación corre **en memoria** para ser rápida y reproducible; los datos del
+escenario se **persisten en DynamoDB** (cargados con `scripts/cargar_datos.py`) y
+se leen en los endpoints `/datos/*` (`src/app/backend/datos.py`). Si DynamoDB no
+está disponible, esos endpoints responden **503** claro sin tumbar el servidor.
 
 ### Seguridad
 
@@ -216,13 +246,13 @@ este tope de `GET /parametros`, así que el slider se ajusta solo.
 
 ## 7. Costos
 
-Ver `docs/costos.md`.
+Ver [`docs/costos.md`](docs/costos.md): costo mensual estimado por servicio con el
+cálculo visible y el gasto real del evento.
 
-<!-- TODO (equipo): completar docs/costos.md con:
-     A) costo mensual estimado (tabla por servicio, precios de calculator.aws + fecha de consulta)
-     B) gasto real durante el evento (captura de Cost Explorer).
-     AWS Budget 'spookython-plaga' ($17/mes, alertas 50/80/100% + pronóstico).
-     Captura en docs/budget.jpeg. -->
+- **AWS Budget** `spookython-plaga`: $17/mes, alertas por correo al 50%, 80% y
+  100% más una de pronóstico.
+- Captura del Budget: [`docs/budget.jpeg`](docs/budget.jpeg).
+- El contenedor ECS es casi todo el costo; **se borra después del pitch**.
 
 ---
 
@@ -240,11 +270,11 @@ Incluye, entre otras, la prueba de rigor **"la vacuna solo va a sanos"**.
 
 ```
 README.md
-docs/            arquitectura.drawio · costos.md · budget.jpeg · tablas-dynamodb.jpeg
+docs/            arquitectura.md (Mermaid) · costos.md · budget.jpeg · tablas-dynamodb.jpeg
 src/
-  simulador/     modelo SEIR, estrategias, líneas base, red, territorio
+  simulador/     modelo SEIR, estrategias, líneas base, red, territorio, R0
   app/
-    backend/     API FastAPI (main, ejecutor, configuración, esquemas, parámetros)
+    backend/     API FastAPI (main, ejecutor, configuración, esquemas, parámetros, datos DynamoDB)
     frontend/    dashboard React + Vite
 videojuego-plaga-zombie/   juego React + Phaser + Vite (app aparte)
 scripts/         carga de datos a DynamoDB, calibración de beta
@@ -261,7 +291,11 @@ Dockerfile       imagen del backend
 - Valores de mascarilla, control de fiebre e infectividad del portador son
   **supuestos de diseño**, no datos reales.
 - Los zombis no desaparecen en el nivel base.
-- Tope de **150 corridas** por el timeout de ECS Express (ver §6).
+- `POST /comparar` es **síncrono**: el balanceador de ECS Express corta a los 60 s.
+  Con el cómputo actual, 300 corridas tardan ~29–42 s; muchas más corridas
+  requerirían ejecución asíncrona (ver §6).
+- La simulación no lee DynamoDB: los datos del escenario se sirven aparte en
+  `/datos/*`; el motor de simulación genera su propia red en memoria.
 - Usuarios IAM **sin MFA** (ver §6).
 
 ---

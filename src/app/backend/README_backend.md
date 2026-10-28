@@ -1,8 +1,10 @@
 # Backend — Plaga Caracol (API de simulación)
 
 API HTTP con **FastAPI** que expone el simulador ficticio (`src/simulador`) para
-comparar estrategias de vacunación. **Todos los datos son SIMULADOS.** No usa
-AWS, no guarda nada y no contiene credenciales.
+comparar estrategias de vacunación, y que **lee los datos del escenario desde
+DynamoDB** (tablas `plaga-*`). **Todos los datos son SIMULADOS.** No contiene
+credenciales: en AWS usa el rol de la tarea de ECS; en local, la cadena de
+credenciales por defecto de boto3 (`aws configure`).
 
 ## Correr en local
 
@@ -34,9 +36,11 @@ docker run --rm -p 8080:8080 -e CORS_ORIGINS="http://localhost:5173,https://mi-f
 |--------------------|---------------------------|--------------------------------------------------|
 | `CORS_ORIGINS`     | `http://localhost:5173`   | Orígenes permitidos (coma-separados). Nunca `*`. |
 | `N_CORRIDAS_MAX`   | `300`                     | Tope de corridas por petición.                   |
-| `DIAS_MAX`         | `90`                      | Tope de días por petición.                       |
+| `DIAS_MAX`         | `100`                     | Tope de días por petición.                       |
 | `MAX_SIMULACIONES` | `2`                       | Simulaciones simultáneas (si se supera → 503).   |
 | `MAX_WORKERS`      | `os.cpu_count()`          | Procesos del pool de simulación.                 |
+| `EJECUTOR_MODO`    | `procesos`                | `procesos` o `hilos` (hilos: contenedores con muy poca CPU). |
+| `AWS_REGION`       | `us-east-1`               | Región de las tablas DynamoDB `plaga-*`.         |
 | `AVISO_SIMULADO`   | `DATOS SIMULADOS`         | Texto de aviso incluido en cada respuesta.       |
 
 ## Endpoints
@@ -46,7 +50,15 @@ docker run --rm -p 8080:8080 -e CORS_ORIGINS="http://localhost:5173,https://mi-f
 | GET    | `/salud`      | `{"estado": "ok"}`                                                 |
 | GET    | `/catalogo`   | Barrios (12) y edificios (10) de la geografía ficticia.            |
 | GET    | `/parametros` | Parámetros editables: valor por defecto, rango y descripción.      |
-| POST   | `/comparar`   | Compara las 5 estrategias: medias, p10/p90, curvas diarias, mejor. |
+| POST   | `/comparar`   | Compara las 5 estrategias: medias, p10/p90, curvas, mejor, R0.     |
+| POST   | `/trayectoria`| Una corrida con registro diario por barrio.                        |
+| GET    | `/datos/casos`, `/datos/casos/resumen` | Casos del brote (DynamoDB `plaga-casos`). |
+| GET    | `/datos/curas`, `/datos/sintomas`, `/datos/inventario` | Curas, síntomas e inventario (DynamoDB). |
+| GET    | `/datos/fumigaciones`, `/datos/noticias` | Fumigaciones y noticias (DynamoDB). |
+
+Los endpoints `/datos/*` leen las tablas con `src/app/backend/datos.py`. Si
+DynamoDB no está disponible (sin credenciales o sin permisos), responden **503**
+con un mensaje claro y el resto de la API sigue funcionando.
 
 ### Ejemplo `POST /comparar`
 
