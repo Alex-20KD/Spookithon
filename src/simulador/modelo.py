@@ -166,6 +166,12 @@ class Simulacion:
             sembrados = self.rng.choice(candidatos, size=n_sembrar, replace=False)
 
         self._infectar(sembrados, dia=0)
+        # Registrar lugar de contagio para el brote inicial.
+        self._lugares_contagio_hoy = []
+        for persona in np.asarray(sembrados, dtype=np.int64).ravel():
+            pos = int(self._pos_barrio[persona])
+            if pos < len(self.red.barrios_lugar_idx):
+                self._lugares_contagio_hoy.append(int(self.red.barrios_lugar_idx[pos]))
         if self.registrar_trayectoria:
             self._registrar_trayectoria(0, np.asarray(sembrados, dtype=np.int64))
         self._registrar_curva(0)
