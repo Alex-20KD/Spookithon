@@ -118,7 +118,7 @@ class Ejecutor:
         Lanza :class:`ServidorOcupado` si no hay cupo libre AHORA mismo (no
         espera): así el cliente recibe un 503 inmediato en vez de quedar colgado.
         """
-        clave = _clave_cache(params, n_corridas)
+        clave = _clave_cache(params, n_corridas, eventos)
         en_cache = self._cache.get(clave)
         if en_cache is not None:
             return en_cache
@@ -210,7 +210,7 @@ class _CacheLRU:
             self._datos.pop(next(iter(self._datos)))  # saca el más antiguo
 
 
-def _clave_cache(params: Params, n_corridas: int) -> str:
+def _clave_cache(params: Params, n_corridas: int, eventos: list | None = None) -> str:
     """Hash estable de los parámetros efectivos + n_corridas.
 
     Incluye la semilla (está dentro de ``params``). Dos peticiones con los mismos
@@ -219,6 +219,7 @@ def _clave_cache(params: Params, n_corridas: int) -> str:
     datos = {
         "params": _params_a_dict(params),
         "n_corridas": n_corridas,
+        "eventos": eventos or [],
     }
     bruto = json.dumps(datos, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(bruto).hexdigest()
