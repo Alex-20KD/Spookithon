@@ -97,6 +97,7 @@ export default function MapPage() {
 
   const cambiarEstrategia = async (e: string) => {
     setEstrategiaSeleccionada(e);
+    setDia(0);
     if (paramsEjecutados) {
       setCargandoTray(true);
       await cargarTrayectoria(e);

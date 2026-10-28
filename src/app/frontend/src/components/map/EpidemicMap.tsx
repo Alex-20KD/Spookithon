@@ -323,7 +323,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     });
 
     const eventosFeatures = (brotes ?? [])
-      .filter((b) => b.activo)
+      .filter((b) => b.activo && (dia == null || b.dia <= dia))
       .map((b) => {
         const c = (catalogo?.barrios ?? []).find((x) => x.id === b.barrio_id);
         if (!c) return null;
