@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/game-store';
 import { CANTONS_MAP } from '../data/manabi-data';
 import { formatNumber, formatPercent } from '../utils/format';
+import { assetUrl } from '../utils/assetUrl';
 import './MapCanvas.css';
 
 // ---------------------------------------------------------------------------
@@ -21,8 +22,8 @@ interface MapData {
   context: GeoFeature[];
 }
 
-const CANTONS_URL = '/assets/mapa/manabi-cantones.geojson';
-const CONTEXT_URL = '/assets/mapa/provincias-contexto.geojson';
+const CANTONS_URL = assetUrl('assets/mapa/manabi-cantones.geojson');
+const CONTEXT_URL = assetUrl('assets/mapa/provincias-contexto.geojson');
 
 let mapDataPromise: Promise<MapData> | null = null;
 

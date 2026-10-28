@@ -10,24 +10,19 @@ maplibregl.setWorkerUrl(
   new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href,
 );
 
-/** Estilo oscuro mínimo sin claves externas (fallback). */
+/** Estilo base AUTÓNOMO: fondo de color sólido, sin tiles ni glyphs externos.
+ *
+ * Así el mapa funciona siempre (incluso sin internet y sin depender de servidores
+ * de tiles públicos que pueden caer o dar 404). Los barrios, edificios y el
+ * territorio de Manta se dibujan encima como capas GeoJSON locales. Para ver
+ * calles/edificios reales de base, define VITE_MAP_STYLE_URL o VITE_MAPTILER_KEY.
+ */
 const DARK_STYLE = {
   version: 8 as const,
-  name: "PLAGA ZERO Dark",
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  sources: {
-    openmaptiles: {
-      type: "vector",
-      tiles: ["https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf"],
-      minzoom: 0,
-      maxzoom: 14,
-    },
-  },
+  name: "PLAGA ZERO Base",
+  sources: {},
   layers: [
-    { id: "background", type: "background", paint: { "background-color": "#080D13" } },
-    { id: "water", type: "fill", source: "openmaptiles", "source-layer": "water", paint: { "fill-color": "#0C1A24" } },
-    { id: "roads", type: "line", source: "openmaptiles", "source-layer": "transportation", paint: { "line-color": "#3B5068", "line-width": ["interpolate", ["zoom"], 10, 0.5, 14, 1.8] } },
-    { id: "buildings", type: "fill", source: "openmaptiles", "source-layer": "building", paint: { "fill-color": "#1A2533", "fill-opacity": 0.85 } },
+    { id: "background", type: "background", paint: { "background-color": "#0A1219" } },
   ],
 };
 
@@ -103,7 +98,12 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     }
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
-    map.on("error", () => setMapError(true));
+    // Un fallo de los tiles del estilo base externo (p. ej. el tile server
+    // público) NO debe ocultar el mapa: los barrios, edificios y el territorio
+    // de Manta se dibujan como capas GeoJSON locales encima. Solo lo registramos.
+    map.on("error", (e) => {
+      console.warn("MapLibre:", (e as { error?: { message?: string } })?.error?.message ?? e);
+    });
 
     map.on("load", () => {
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -437,8 +437,9 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     <div>
       {mapError && (
         <div className="error-box" role="alert">
-          No se pudo inicializar el mapa vectorial. Revisa tu conexión o define
-          <code> VITE_MAP_STYLE_URL</code> / <code>VITE_MAPTILER_KEY</code>.
+          No se pudo inicializar el mapa. Es posible que tu navegador no soporte
+          WebGL. Los barrios y su nivel de riesgo también se muestran en la tabla
+          “Barrios más afectados”.
         </div>
       )}
       <div style={{ position: "relative" }}>

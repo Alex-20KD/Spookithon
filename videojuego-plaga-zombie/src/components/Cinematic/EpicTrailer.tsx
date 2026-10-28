@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './EpicTrailer.css';
 import { formatNumber } from '../../utils/format';
+import { assetUrl } from '../../utils/assetUrl';
 
 interface EpicTrailerProps {
   onComplete: () => void;
@@ -8,27 +9,27 @@ interface EpicTrailerProps {
 
 // Datos de los personajes
 const PERSONAJES = [
-  { img: '/assets/personajes/hacker.png', name: 'EL HACKER', subtitle: 'Ing. Sistemas', frase: '"Puedo entrar a cualquier sistema..."' },
-  { img: '/assets/personajes/lider.png', name: 'EL LÍDER', subtitle: 'Administración', frase: '"No dejaré que nadie más muera"' },
-  { img: '/assets/personajes/medico.png', name: 'EL MÉDICO', subtitle: 'Medicina', frase: '"Encontraré la cura"' },
-  { img: '/assets/personajes/gotica.png', name: 'LA GÓTICA', subtitle: 'Artes', frase: '"La oscuridad es mi aliada"' },
-  { img: '/assets/personajes/egirl.png', name: 'LA E-GIRL', subtitle: 'Comunicación', frase: '"Mis seguidores me ayudarán"' }
+  { img: assetUrl('assets/personajes/hacker.png'), name: 'EL HACKER', subtitle: 'Ing. Sistemas', frase: '"Puedo entrar a cualquier sistema..."' },
+  { img: assetUrl('assets/personajes/lider.png'), name: 'EL LÍDER', subtitle: 'Administración', frase: '"No dejaré que nadie más muera"' },
+  { img: assetUrl('assets/personajes/medico.png'), name: 'EL MÉDICO', subtitle: 'Medicina', frase: '"Encontraré la cura"' },
+  { img: assetUrl('assets/personajes/gotica.png'), name: 'LA GÓTICA', subtitle: 'Artes', frase: '"La oscuridad es mi aliada"' },
+  { img: assetUrl('assets/personajes/egirl.png'), name: 'LA E-GIRL', subtitle: 'Comunicación', frase: '"Mis seguidores me ayudarán"' }
 ];
 
 // Zombies especiales
 const ZOMBIES = [
-  { img: '/assets/zombies/zombie-corredor.png', name: 'CORREDOR' },
-  { img: '/assets/zombies/zombie-gotica.png', name: 'GÓTICA' },
-  { img: '/assets/zombies/zombie-egirl.png', name: 'E-GIRL VIRAL' },
-  { img: '/assets/zombies/zombie-escupidor.png', name: 'ESCUPIDOR' },
-  { img: '/assets/zombies/zombie-tanque.png', name: 'TANQUE' }
+  { img: assetUrl('assets/zombies/zombie-corredor.png'), name: 'CORREDOR' },
+  { img: assetUrl('assets/zombies/zombie-gotica.png'), name: 'GÓTICA' },
+  { img: assetUrl('assets/zombies/zombie-egirl.png'), name: 'E-GIRL VIRAL' },
+  { img: assetUrl('assets/zombies/zombie-escupidor.png'), name: 'ESCUPIDOR' },
+  { img: assetUrl('assets/zombies/zombie-tanque.png'), name: 'TANQUE' }
 ];
 
 // Jefes
 const JEFES = [
-  { img: '/assets/zombies/jefe-reina.png', name: 'LA REINA DEL LUTO', hp: 100 },
-  { img: '/assets/zombies/jefe-matriarca.png', name: 'LA MATRIARCA VIRAL', hp: 100 },
-  { img: '/assets/zombies/jefe-abominacion.png', name: 'LA ABOMINACIÓN', hp: 100 }
+  { img: assetUrl('assets/zombies/jefe-reina.png'), name: 'LA REINA DEL LUTO', hp: 100 },
+  { img: assetUrl('assets/zombies/jefe-matriarca.png'), name: 'LA MATRIARCA VIRAL', hp: 100 },
+  { img: assetUrl('assets/zombies/jefe-abominacion.png'), name: 'LA ABOMINACIÓN', hp: 100 }
 ];
 
 // Duración (ms) de cada escena, en el mismo orden que renderScene()
@@ -59,7 +60,7 @@ const EpicTrailer: React.FC<EpicTrailerProps> = ({ onComplete }) => {
 
   useEffect(() => {
     // Cargar música
-    const audio = new Audio('/assets/audio/intro-music.mp3');
+    const audio = new Audio(assetUrl('assets/audio/intro-music.mp3'));
     audio.volume = 0.4;
     audio.loop = false;
     audio.play().catch(() => console.log('Audio no disponible'));
@@ -197,7 +198,7 @@ const EpicTrailer: React.FC<EpicTrailerProps> = ({ onComplete }) => {
       return (
         <div className="puce-scene">
           <div className="blue-particles"></div>
-          <img src="/assets/personajes/estratega.png" alt="Estratega PUCE" className="estratega-img flash-blue"
+          <img src={assetUrl('assets/personajes/estratega.png')} alt="Estratega PUCE" className="estratega-img flash-blue"
                onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="600"%3E%3Crect width="400" height="600" fill="%23001a33"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%2300bfff" font-size="28" font-weight="bold"%3EESTRATEGAPUCE%3C/text%3E%3C/svg%3E'; }}
           />
           <div className="drones">
@@ -220,7 +221,7 @@ const EpicTrailer: React.FC<EpicTrailerProps> = ({ onComplete }) => {
     if (scene === 21) {
       return (
         <div className="paciente-cero-scene">
-          <img src="/assets/zombies/jefe-paciente-cero.png" alt="Paciente Cero" className="paciente-cero-img"
+          <img src={assetUrl('assets/zombies/jefe-paciente-cero.png')} alt="Paciente Cero" className="paciente-cero-img"
                onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="500" height="700"%3E%3Crect width="500" height="700" fill="%23000"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%23ff0000" font-size="48" font-weight="bold"%3EPACIENTECERO%3C/text%3E%3C/svg%3E'; }}
           />
           <div className="glowing-eyes"></div>
