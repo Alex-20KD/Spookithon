@@ -1,11 +1,12 @@
-# PLAGA CARACOL — Simulador de epidemia y estrategias de contención
+# PLAGA ZOMBIE: MANABÍ — Simulador de epidemia y estrategias de contención
 
-> **SpookyThon 2026 · Track B · La Plaga Zombie** — Equipo Plaga Caracol
+> **SpookyThon 2026 · Track B · La Plaga Zombie** — Equipo Plaga Zombie
+> (escenario de origen: "Plaga Caracol")
 >
 > ⚠️ **TODOS LOS DATOS SON SIMULADOS.** Escenario ficticio sobre Manta (Ecuador).
 > No usa datos reales de personas ni de salud pública.
 
-Simulador de la "Plaga Caracol" en Manta que, sobre una red de contactos de
+Simulador de un brote zombie ("Plaga Caracol") en Manta que, sobre una red de contactos de
 3.000 personas ficticias, **compara estrategias de vacunación y contención** y
 recomienda cuál deja a menos gente infectada frente a *no hacer nada* o *actuar
 al azar*. Incluye un panel web (dashboard) y un videojuego de estrategia.
