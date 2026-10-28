@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+// En producción el juego se sirve bajo /juego/ (CloudFront + S3). En local
+// (dev) se sirve en la raíz de localhost:3000. Por eso 'base' es condicional.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/juego/' : '/',
   plugins: [react()],
   server: {
     port: 3000,
@@ -13,4 +16,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))
