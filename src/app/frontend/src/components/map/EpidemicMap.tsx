@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Delaunay } from "d3-delaunay";
+
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BarrioMapa, CatalogoResponse } from "../../types/api";
@@ -58,6 +58,21 @@ function nivelRiesgo(ratio: number): string {
 }
 
 
+
+function hexNearestBarrio(lng: number, lat: number, barrios: BarrioMapa[]): string | null {
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const b of barrios) {
+    if (b.lat == null || b.lng == null) continue;
+    const d = (b.lng - lng) ** 2 + (b.lat - lat) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = b.id;
+    }
+  }
+  return best;
+}
+
 interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
@@ -75,10 +90,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
 
   // Centro: promedio de coordenadas de los barrios con geo válida, o Manta.
   const conGeo = barrios.filter((b) => b.lat != null && b.lng != null);
-  function minLngAll(bs: BarrioMapa[]) { return Math.min(...bs.map((b) => b.lng as number)); }
-  function maxLngAll(bs: BarrioMapa[]) { return Math.max(...bs.map((b) => b.lng as number)); }
-  function minLatAll(bs: BarrioMapa[]) { return Math.min(...bs.map((b) => b.lat as number)); }
-  function maxLatAll(bs: BarrioMapa[]) { return Math.max(...bs.map((b) => b.lat as number)); }
 
   const centro: [number, number] = conGeo.length
     ? [
@@ -313,30 +324,35 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features,
     });
 
-    // Voronoi por barrio (zonas aproximadas).
-    const pts = (conGeo.length ? conGeo : barrios)
-      .filter((b) => b.lat != null && b.lng != null)
-      .map((b) => [b.lng as number, b.lat as number]);
-    const delaunay = Delaunay.from(pts);
-    const voronoi = delaunay.voronoi([minLngAll(barrios) - 0.03, minLatAll(barrios) - 0.03, maxLngAll(barrios) + 0.03, maxLatAll(barrios) + 0.03]);
+    // Cuadrícula por barrio (zonas aproximadas, no Voronoi).
     const maxInfZonas = Math.max(1, ...barrios.map((b) => b.infectados_media ?? 0));
+    const lngs = (conGeo.length ? conGeo : barrios).map((b) => b.lng as number);
+    const lats = (conGeo.length ? conGeo : barrios).map((b) => b.lat as number);
+    const minLng = Math.min(...lngs) - 0.02;
+    const maxLng = Math.max(...lngs) + 0.02;
+    const minLat = Math.min(...lats) - 0.02;
+    const maxLat = Math.max(...lats) + 0.02;
+    const step = 0.006;
     const zonasFeatures: any[] = [];
-    (conGeo.length ? conGeo : barrios).forEach((b, i) => {
-      if (b.lat == null || b.lng == null) return;
-      const cell = voronoi.cellPolygon(i);
-      if (!cell) return;
-      const acum = b.infectados_media ?? 0;
-      const ratio = acum / maxInfZonas;
-      const color = acum > 0 ? colorRiesgo(ratio) : "#263746";
-      zonasFeatures.push({
-        type: "Feature",
-        geometry: { type: "Polygon", coordinates: [cell] },
-        properties: {
-          barrio: b.id,
-          color,
-        },
-      });
-    });
+    for (let lat = minLat; lat <= maxLat; lat += step) {
+      for (let lng = minLng; lng <= maxLng; lng += step) {
+        const bid = hexNearestBarrio(lng + step / 2, lat + step / 2, conGeo.length ? conGeo : barrios);
+        if (!bid) continue;
+        const b = barrios.find((x) => x.id === bid);
+        if (!b) continue;
+        const acum = b.infectados_media ?? 0;
+        const ratio = acum / maxInfZonas;
+        const color = acum > 0 ? colorRiesgo(ratio) : "#263746";
+        zonasFeatures.push({
+          type: "Feature",
+          geometry: {
+            type: "Polygon",
+            coordinates: [[[lng, lat], [lng + step, lat], [lng + step, lat + step], [lng, lat + step], [lng, lat]]],
+          },
+          properties: { barrio: bid, color },
+        });
+      }
+    }
     (map.getSource("zonas") as maplibregl.GeoJSONSource)?.setData({
       type: "FeatureCollection",
       features: zonasFeatures,
