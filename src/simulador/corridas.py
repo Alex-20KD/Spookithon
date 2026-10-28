@@ -126,6 +126,7 @@ def correr_una_corrida(
     indice: int,
     estrategias: list | None = None,
     eventos: list | None = None,
+    intervenciones: list | None = None,
 ) -> dict[str, tuple[int, np.ndarray, np.ndarray]]:
     """Ejecuta UNA corrida (la ``indice``) para todas las estrategias.
 
@@ -145,7 +146,7 @@ def correr_una_corrida(
     red = construir_red(params.poblacion, semilla)
     salida: dict[str, tuple[int, np.ndarray, np.ndarray]] = {}
     for e in estrategias:
-        sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos)
+        sim = Simulacion(params, red, e, semilla=semilla, eventos=eventos, intervenciones=intervenciones)
         res = sim.correr()
         salida[e.nombre] = (
             res.infectados_totales,
@@ -243,6 +244,7 @@ def correr_trayectoria(
     estrategia_nombre: str,
     semilla: int | None = None,
     eventos: list | None = None,
+    intervenciones: list | None = None,
 ) -> dict:
     """Ejecuta UNA corrida determinista con registro diario por barrio.
 
@@ -253,7 +255,7 @@ def correr_trayectoria(
     red = construir_red(params.poblacion, base)
     estrategia = _estrategia_por_nombre(estrategia_nombre)
     sim = Simulacion(
-        params, red, estrategia, semilla=base, registrar_trayectoria=True, eventos=eventos
+        params, red, estrategia, semilla=base, registrar_trayectoria=True, eventos=eventos, intervenciones=intervenciones
     )
     res = sim.correr()
     return {

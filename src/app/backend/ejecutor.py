@@ -42,10 +42,10 @@ class ServidorOcupado(Exception):
 # (no una lambda ni un closure) para que ProcessPoolExecutor pueda serializarla.
 
 def _worker_corrida(
-    params: Params, indice: int, eventos: list | None = None
+    params: Params, indice: int, eventos: list | None = None, intervenciones: list | None = None
 ) -> dict[str, tuple[int, list[float], list[int]]]:
     """Ejecuta una sola corrida y devuelve datos serializables (listas, no arrays)."""
-    bruto = _corridas.correr_una_corrida(params, indice, eventos=eventos)
+    bruto = _corridas.correr_una_corrida(params, indice, eventos=eventos, intervenciones=intervenciones)
     # Convertir numpy -> tipos nativos para pasar entre procesos sin sorpresas.
     return {
         nombre: (int(inf), curva.tolist(), por_barrio.tolist())
@@ -53,11 +53,11 @@ def _worker_corrida(
     }
 
 
-def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
+def _worker_trayectoria(params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None, intervenciones: list | None = None) -> dict:
     """Ejecuta una sola corrida con registro diario por barrio."""
     from simulador import corridas as _corridas_sim
 
-    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla, eventos)
+    return _corridas_sim.correr_trayectoria(params, estrategia_nombre, semilla, eventos, intervenciones)
 
 
 class Ejecutor:
@@ -112,13 +112,13 @@ class Ejecutor:
             self._pool.shutdown(wait=False, cancel_futures=True)
             self._pool = None
 
-    async def comparar(self, params: Params, n_corridas: int, eventos: list | None = None) -> dict[str, Any]:
+    async def comparar(self, params: Params, n_corridas: int, eventos: list | None = None, intervenciones: list | None = None) -> dict[str, Any]:
         """Devuelve el resumen (como dict JSON-serializable) de la comparación.
 
         Lanza :class:`ServidorOcupado` si no hay cupo libre AHORA mismo (no
         espera): así el cliente recibe un 503 inmediato en vez de quedar colgado.
         """
-        clave = _clave_cache(params, n_corridas, eventos)
+        clave = _clave_cache(params, n_corridas, eventos, intervenciones)
         en_cache = self._cache.get(clave)
         if en_cache is not None:
             return en_cache
@@ -136,14 +136,14 @@ class Ejecutor:
             if en_cache is not None:
                 return en_cache
 
-            resumen = await self._ejecutar(params, n_corridas, eventos)
+            resumen = await self._ejecutar(params, n_corridas, eventos, intervenciones)
             self._cache.put(clave, resumen)
             return resumen
         finally:
             self._en_curso -= 1
             self._semaforo.release()
 
-    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None) -> dict:
+    async def trayectoria(self, params: Params, estrategia_nombre: str, semilla: int, eventos: list | None = None, intervenciones: list | None = None) -> dict:
         """Ejecuta una corrida determinista con trayectoria diaria."""
         if self._en_curso >= self._max_simulaciones:
             raise ServidorOcupado()
@@ -152,19 +152,19 @@ class Ejecutor:
         try:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(
-                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla, eventos
+                self._pool, _worker_trayectoria, params, estrategia_nombre, semilla, eventos, intervenciones
             )
         finally:
             self._en_curso -= 1
             self._semaforo.release()
 
-    async def _ejecutar(self, params: Params, n_corridas: int, eventos: list | None = None) -> dict[str, Any]:
+    async def _ejecutar(self, params: Params, n_corridas: int, eventos: list | None = None, intervenciones: list | None = None) -> dict[str, Any]:
         assert self._pool is not None, "El pool no está iniciado."
         loop = asyncio.get_running_loop()
 
         # Lanzar una tarea por corrida al pool de procesos.
         futuros = [
-            loop.run_in_executor(self._pool, _worker_corrida, params, i, eventos)
+            loop.run_in_executor(self._pool, _worker_corrida, params, i, eventos, intervenciones)
             for i in range(n_corridas)
         ]
         resultados = await asyncio.gather(*futuros)
@@ -210,7 +210,7 @@ class _CacheLRU:
             self._datos.pop(next(iter(self._datos)))  # saca el más antiguo
 
 
-def _clave_cache(params: Params, n_corridas: int, eventos: list | None = None) -> str:
+def _clave_cache(params: Params, n_corridas: int, eventos: list | None = None, intervenciones: list | None = None) -> str:
     """Hash estable de los parámetros efectivos + n_corridas.
 
     Incluye la semilla (está dentro de ``params``). Dos peticiones con los mismos
@@ -220,6 +220,7 @@ def _clave_cache(params: Params, n_corridas: int, eventos: list | None = None) -
         "params": _params_a_dict(params),
         "n_corridas": n_corridas,
         "eventos": eventos or [],
+        "intervenciones": intervenciones or [],
     }
     bruto = json.dumps(datos, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(bruto).hexdigest()

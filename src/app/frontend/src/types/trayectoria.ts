@@ -49,6 +49,7 @@ export interface TrayectoriaRequest {
   via_transmision?: string;
   beta_espora?: number;
   eventos?: { tipo: string; dia: number; barrio_id?: string; intensidad?: number; duracion?: number; nombre?: string }[];
+  intervenciones?: { dia: number; estrategia: string; duracion?: number }[];
   estrategia: string;
 }
 

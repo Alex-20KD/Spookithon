@@ -85,6 +85,10 @@ class ParametrosComparar(BaseModel):
         default=None,
         description="Eventos de brote sorpresa opcionales.",
     )
+    intervenciones: list[dict] | None = Field(
+        default=None,
+        description="Intervenciones adicionales con día de activación.",
+    )
 
 
 # ----------------------------- Respuestas ------------------------------ #
@@ -191,3 +195,4 @@ class ParametrosTrayectoria(BaseModel):
     via_transmision: str | None = Field(default=None, description="mordidas, esporas o combinada")
     beta_espora: float | None = Field(default=None, ge=0.0, le=1.0)
     eventos: list[dict] | None = Field(default=None, description="Eventos de brote sorpresa.")
+    intervenciones: list[dict] | None = Field(default=None, description="Intervenciones adicionales.")

@@ -206,7 +206,7 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
             )
 
         params = _construir_params(entrada)
-        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas, entrada.eventos)
+        resumen = await app.state.ejecutor.comparar(params, entrada.n_corridas, entrada.eventos, entrada.intervenciones)
         return _armar_respuesta(resumen, params, entrada.n_corridas, cfg)
 
     @app.post("/trayectoria")
@@ -221,7 +221,7 @@ def _registrar_rutas(app: FastAPI, cfg) -> None:
         if entrada.semilla is not None:
             params = params.con(semilla=entrada.semilla)
         resumen = await app.state.ejecutor.trayectoria(
-            params, entrada.estrategia, params.semilla, entrada.eventos
+            params, entrada.estrategia, params.semilla, entrada.eventos, entrada.intervenciones
         )
         return _armar_trayectoria(resumen, params, cfg)
 

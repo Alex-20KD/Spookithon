@@ -21,6 +21,7 @@ export interface CompararRequest {
   via_transmision?: string;
   beta_espora?: number;
   eventos?: { tipo: string; dia: number; barrio_id?: string; intensidad?: number; duracion?: number; nombre?: string }[] | null;
+  intervenciones?: { dia: number; estrategia: string; duracion?: number }[] | null;
 }
 
 /** Curva diaria de zombis para graficar (día 0..dias) con banda p10-p90. */
