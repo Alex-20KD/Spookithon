@@ -383,7 +383,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
   const centrarManta = () => {
     const map = mapRef.current;
     if (!map) return;
-    map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 60, bearing: -15, duration: 1200 });
+    map.flyTo({ center: [-80.72, -0.96], zoom: 12.4, pitch: 0, bearing: 0, duration: 1200 });
   };
 
   return (
@@ -410,7 +410,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
           <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => moverCamara(0, 0)}>
             Vista superior
           </button>
-          <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => moverCamara(60, -20)}>
+          <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => moverCamara(45, -15)}>
             Vista 3D
           </button>
           <button className="btn ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={centrarManta}>
