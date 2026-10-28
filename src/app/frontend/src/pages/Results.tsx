@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useSimulation } from "../context/SimulationContext";
+import { compararEstrategias } from "../services/apiClient";
 import PageTitle from "../components/ui/PageTitle";
 import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
@@ -36,8 +37,10 @@ function datosCurva(e: ResultadoEstrategia) {
 }
 
 export default function Results() {
-  const { resultado, cargando, error } = useSimulation();
+  const { resultado, cargando, error, params, viaTransmision } = useSimulation();
   const [estrategiaSel, setEstrategiaSel] = useState<string | null>(null);
+  const [brotesResultados, setBrotesResultados] = useState<Record<string, any>>({});
+  const [cargandoMatriz, setCargandoMatriz] = useState(false);
 
   const estrategias = resultado?.estrategias ?? [];
 
@@ -53,6 +56,41 @@ export default function Results() {
   }, [resultado, estrategiaSel]);
 
   const curva = seleccionada ? datosCurva(seleccionada) : [];
+
+  const ESCENARIOS_BROTES = ["base", "brote_secundario", "zombie_corredor", "horda_migratoria", "fallo_contencion", "acechador", "chasqueador", "gordinflon"];
+  const eventosParaEscenario = (sc: string) => {
+    const dia = 5; const barrio = "b01";
+    switch (sc) {
+      case "base": return [];
+      case "brote_secundario": return [{ tipo: "brote_secundario", dia, barrio_id: barrio, intensidad: 5, duracion: 5, nombre: "brote_secundario" }];
+      case "zombie_corredor": return [{ tipo: "zombie_corredor", dia, barrio_id: barrio, intensidad: 1, duracion: 5, nombre: "zombie_corredor" }];
+      case "horda_migratoria": return [{ tipo: "horda_migratoria", dia, barrio_id: barrio, intensidad: 5, duracion: 5, nombre: "horda_migratoria" }];
+      case "fallo_contencion": return [{ tipo: "fallo_contencion", dia, barrio_id: barrio, intensidad: 1, duracion: 5, nombre: "fallo_contencion" }];
+      case "acechador": return [{ tipo: "aparicion_acechador", dia, barrio_id: barrio, intensidad: 3, duracion: 7, nombre: "aparicion_acechador" }];
+      case "chasqueador": return [{ tipo: "aparicion_chasqueador", dia, barrio_id: barrio, intensidad: 3, duracion: 7, nombre: "aparicion_chasqueador" }];
+      case "gordinflon": return [{ tipo: "aparicion_gordinflon", dia, barrio_id: barrio, intensidad: 2, duracion: 7, nombre: "aparicion_gordinflon" }];
+      default: return [];
+    }
+  };
+
+  const calcularMatriz = async () => {
+    setCargandoMatriz(true);
+    const res: Record<string, any> = {};
+    await Promise.all(
+      ESCENARIOS_BROTES.map(async (sc) => {
+        const ev = eventosParaEscenario(sc);
+        const cuerpo = { ...params, via_transmision: viaTransmision, eventos: ev, n_corridas: params.n_corridas };
+        try {
+          const r = await compararEstrategias(cuerpo as any);
+          res[sc] = r;
+        } catch (e) {
+          // ignore
+        }
+      }),
+    );
+    setBrotesResultados(res);
+    setCargandoMatriz(false);
+  };
 
   // --- Estados de carga / error / vacío --- //
   if (cargando) {
@@ -213,6 +251,54 @@ export default function Results() {
         <p style={{ color: "var(--muted)", fontSize: 14, marginTop: 6 }}>
           {resultado.recomendacion}
         </p>
+      </Card>
+
+      <div style={{ height: 16 }} />
+
+      <Card title="Impacto de brotes y estrategias">
+        {Object.keys(brotesResultados).length === 0 ? (
+          <div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+              Calcula la matriz de brotes × estrategias (puede tardar).
+            </div>
+            <button className="btn primary" onClick={calcularMatriz} disabled={cargandoMatriz}>
+              {cargandoMatriz ? "Calculando…" : "Calcular matriz"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Brote</th>
+                  <th>Estrategia</th>
+                  <th>Infectados (media)</th>
+                  <th>P10–P90</th>
+                  <th>Salvados (media)</th>
+                  <th>Mejora vs sin intervención</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ESCENARIOS_BROTES.map((sc) => {
+                  const r = brotesResultados[sc];
+                  if (!r) return null;
+                  return r.estrategias.map((e: any) => (
+                    <tr key={`${sc}-${e.nombre}`}>
+                      <td>{sc}</td>
+                      <td>{nombreAmigable(e.nombre)}</td>
+                      <td>{num(e.infectados_media)}</td>
+                      <td>
+                        {num(e.infectados_p10)} – {num(e.infectados_p90)}
+                      </td>
+                      <td>{num(e.salvados_media)}</td>
+                      <td>{e.pct_mejor_que_nada.toFixed(0)}%</td>
+                    </tr>
+                  ));
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <div style={{ height: 16 }} />
