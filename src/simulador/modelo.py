@@ -130,6 +130,7 @@ class Simulacion:
         self._lugares_contagio_hoy: list[int] = []
         for pos, lugar_idx in enumerate(red.barrios_lugar_idx):
             self._pos_barrio[red.barrio_persona == lugar_idx] = pos
+        self.poblacion_por_barrio = np.bincount(self._pos_barrio, minlength=n_barrios)
         self._ids_barrio = list(red.barrios_ids)
         self._dosis_prev = 0
         self._barrios_con_contagio: set[str] = set()

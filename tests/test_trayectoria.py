@@ -79,3 +79,16 @@ def test_comparar_sigue_funcionando(cliente):
     d = r.json()
     assert len(d["estrategias"]) == 5
     assert "mapa" in d
+
+
+def test_poblacion_por_sector_conserva_las_personas(cliente):
+    r = cliente.post("/trayectoria", json={"dias": 8, "semilla": 42, "estrategia": "Nada"})
+    assert r.status_code == 200
+    d = r.json()
+    poblaciones = [b["poblacion"] for b in d["serie_por_barrio"]]
+    assert all(isinstance(x, int) and x > 0 for x in poblaciones)
+    assert sum(poblaciones) == 3000
+    for punto in d["serie_global"]:
+        total = punto["SANO"] + punto["INCUBANDO"] + punto["PORTADOR"] + punto["ZOMBI"] + punto["INMUNE"]
+        assert total == 3000
+

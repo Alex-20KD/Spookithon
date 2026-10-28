@@ -262,6 +262,8 @@ def correr_trayectoria(
         "dias": params.dias,
         "trayectoria": res.trayectoria,
         "infectados_totales": res.infectados_totales,
+        "poblacion_por_barrio": [int(x) for x in sim.poblacion_por_barrio],
+        "barrios_ids": list(red.barrios_ids),
         "dosis_usadas": res.dosis_usadas,
         "dias_cierre": res.dias_cierre,
         "infectados_por_barrio": (

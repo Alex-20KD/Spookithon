@@ -291,6 +291,7 @@ def _armar_trayectoria(resumen: dict, params: Params, cfg) -> dict:
                 "primer_dia_infeccion": p.get("primer_dia_infeccion"),
             })
 
+    poblacion_por_id = dict(zip(resumen.get("barrios_ids", []), resumen.get("poblacion_por_barrio", [])))
     por_barrio_series = []
     for bid, puntos in series.items():
         base = barrios_cat.get(bid, {})
@@ -305,6 +306,7 @@ def _armar_trayectoria(resumen: dict, params: Params, cfg) -> dict:
             "lat": base.get("lat"),
             "lng": base.get("lng"),
             "primer_dia_infeccion": primer_dia,
+            "poblacion": poblacion_por_id.get(bid),
             "puntos": puntos,
         })
 
