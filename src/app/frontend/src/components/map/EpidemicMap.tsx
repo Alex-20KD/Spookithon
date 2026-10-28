@@ -60,9 +60,10 @@ interface Props {
   showHeatmap?: boolean;
   showMovimientos?: boolean;
   showEventos?: boolean;
+  height?: number;
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar, showHeatmap = true, showMovimientos = false, showEventos = true, variable = "nuevos" }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar, showHeatmap = true, showMovimientos = false, showEventos = true, variable = "nuevos", height = 520 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -466,7 +467,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         </div>
       )}
       <div style={{ position: "relative" }}>
-        <div ref={containerRef} className="map-container" style={{ height: "100%", width: "100%" }} />
+        <div ref={containerRef} className="map-container" style={{ height, width: "100%" }} />
         <div
           style={{
             position: "absolute",

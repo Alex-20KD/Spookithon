@@ -238,6 +238,7 @@ export default function MapPage() {
                 showMovimientos={showMovimientos}
                 showEventos={showEventos}
                 variable={variable}
+                height={620}
               />
             </div>
           )}

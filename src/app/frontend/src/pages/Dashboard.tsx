@@ -121,6 +121,7 @@ export default function Dashboard() {
                   showMovimientos={false}
                   showEventos={true}
                   variable="acumulados"
+                  height={360}
                 />
               </div>
               <div style={{ marginTop: 8 }}>
