@@ -23,6 +23,8 @@ import CurveTooltip from "../components/charts/CurveTooltip";
 import { nombreAmigable } from "../utils/estrategias";
 import type { ResultadoEstrategia } from "../types/api";
 
+const ESPECIALES = ["BloqueoEmergencia", "VigilanciaIntensiva", "EvacuacionPreventiva", "AislamientoFocalizado", "RefuerzoContencion", "ControlEsporas"];
+
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
 
 const selectStyle: React.CSSProperties = {
@@ -68,8 +70,6 @@ export default function Results() {
   }, [resultadoGrafico, estrategiaGrafico]);
 
   const curvaGrafico = seleccionadaGrafico ? datosCurva(seleccionadaGrafico) : [];
-
-  const ESPECIALES = ["BloqueoEmergencia", "VigilanciaIntensiva", "EvacuacionPreventiva", "AislamientoFocalizado", "RefuerzoContencion", "ControlEsporas"];
 
   useEffect(() => {
     if (ESPECIALES.indexOf(estrategiaGrafico) === -1) {
