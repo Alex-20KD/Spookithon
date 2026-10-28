@@ -527,19 +527,13 @@ class Simulacion:
         sorteo = self.rng.random(self.red.n_personas)
         nuevos = np.where(sanos & (sorteo < prob_inf))[0]
 
-        # Atribuir lugar de contagio para cada nuevo infectado.
+        # Registrar el barrio (lugar territorial) de cada nuevo infectado.
         self._lugares_contagio_hoy = []
-        if nuevos.size > 0 and idx.size > 0:
+        if nuevos.size > 0:
             for persona in nuevos:
-                mask = per_p == persona
-                if not np.any(mask):
-                    continue
-                lugares_persona = lug_p[mask]
-                if lugares_persona.size == 0:
-                    continue
-                lambdas = lambda_lugar[lugares_persona]
-                best = lugares_persona[int(np.argmax(lambdas))]
-                self._lugares_contagio_hoy.append(int(best))
+                pos = int(self._pos_barrio[persona])
+                if pos < len(self.red.barrios_lugar_idx):
+                    self._lugares_contagio_hoy.append(int(self.red.barrios_lugar_idx[pos]))
 
         # Atribución fraccional de infector (opcional, sin azar nuevo).
         if self.atribuir and nuevos.size > 0:
