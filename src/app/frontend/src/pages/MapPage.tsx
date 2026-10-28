@@ -52,6 +52,10 @@ export default function MapPage() {
   const [showMovimientos, setShowMovimientos] = useState(false);
   const [showEventos, setShowEventos] = useState(true);
   const [variable, setVariable] = useState<"nuevos" | "acumulados" | "zombis">("nuevos");
+  const [intervenciones, setIntervenciones] = useState<{ dia: number; estrategia: string; duracion: number }[]>([
+    { dia: 0, estrategia: "CierresMasCentralidad", duracion: 60 },
+    { dia: 30, estrategia: "BloqueoEmergencia", duracion: 10 },
+  ]);
 
   const contagiosDia = trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? [];
   const totalVar = contagiosDia.reduce((a, c) => a + (variable === "nuevos" ? c.nuevos : variable === "acumulados" ? c.acumulados : c.zombis), 0);
@@ -336,6 +340,69 @@ export default function MapPage() {
             </Card>
           )}
 
+          <Card title="Centro de decisiones">
+            {intervenciones.map((iv, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ minWidth: 40, fontSize: 12 }}>Día {iv.dia}</span>
+                <select
+                  value={iv.estrategia}
+                  onChange={(e) => {
+                    const n = [...intervenciones];
+                    n[idx].estrategia = e.target.value;
+                    setIntervenciones(n);
+                  }}
+                  style={selectStyle}
+                >
+                  <option value="CierresMasCentralidad">Cierres + centralidad</option>
+                  <option value="BloqueoEmergencia">Bloqueo de emergencia</option>
+                  <option value="VigilanciaIntensiva">Vigilancia intensiva</option>
+                  <option value="EvacuacionPreventiva">Evacuación preventiva</option>
+                  <option value="AislamientoFocalizado">Aislamiento focalizado</option>
+                  <option value="RefuerzoContencion">Refuerzo de contención</option>
+                  <option value="ControlEsporas">Control de esporas</option>
+                </select>
+                <input
+                  type="number"
+                  value={iv.dia}
+                  onChange={(e) => {
+                    const n = [...intervenciones];
+                    n[idx].dia = Number(e.target.value);
+                    setIntervenciones(n);
+                  }}
+                  style={{ ...selectStyle, width: 60 }}
+                />
+                <input
+                  type="number"
+                  value={iv.duracion}
+                  onChange={(e) => {
+                    const n = [...intervenciones];
+                    n[idx].duracion = Number(e.target.value);
+                    setIntervenciones(n);
+                  }}
+                  style={{ ...selectStyle, width: 60 }}
+                />
+                <button className="btn ghost" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setIntervenciones(intervenciones.filter((_, i) => i !== idx))}>
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button className="btn ghost" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => setIntervenciones([...intervenciones, { dia: 30, estrategia: "BloqueoEmergencia", duracion: 10 }])}>
+                Agregar
+              </button>
+              <button
+                className="btn primary"
+                style={{ padding: "4px 8px", fontSize: 11 }}
+                onClick={() => {
+                  setCargandoTray(true);
+                  cargarTrayectoria(estrategiaSeleccionada, intervenciones).finally(() => setCargandoTray(false));
+                }}
+                disabled={cargandoTray}
+              >
+                {cargandoTray ? "Aplicando…" : "Aplicar plan"}
+              </button>
+            </div>
+          </Card>
           <Card title="Nivel de riesgo">
             <div className="legend">
               {NIVELES.map((n) => (
