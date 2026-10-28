@@ -48,6 +48,9 @@ export default function MapPage() {
   const [reproduciendo, setReproduciendo] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
   const [cargandoTray, setCargandoTray] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showMovimientos, setShowMovimientos] = useState(false);
+  const [showEventos, setShowEventos] = useState(true);
   const cargaIniciadaRef = useRef(false);
 
   const timerRef = useRef<number | null>(null);
@@ -228,6 +231,9 @@ export default function MapPage() {
               movimientos={trayectoria?.serie_global?.[dia]?.movimientos ?? []}
               brotes={brotes}
               contagiosPorLugar={trayectoria?.serie_global?.[dia]?.contagios_por_lugar ?? []}
+              showHeatmap={showHeatmap}
+              showMovimientos={showMovimientos}
+              showEventos={showEventos}
             />
           )}
           <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
@@ -255,6 +261,11 @@ export default function MapPage() {
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
               Día actual: {dia} / {paramsEjecutados?.dias ?? params.dias}
+            </div>
+            <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", fontSize: 12 }}>
+              <label><input type="checkbox" checked={showHeatmap} onChange={(e) => setShowHeatmap(e.target.checked)} /> Heatmap</label>
+              <label><input type="checkbox" checked={showMovimientos} onChange={(e) => setShowMovimientos(e.target.checked)} /> Movimientos</label>
+              <label><input type="checkbox" checked={showEventos} onChange={(e) => setShowEventos(e.target.checked)} /> Eventos</label>
             </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>

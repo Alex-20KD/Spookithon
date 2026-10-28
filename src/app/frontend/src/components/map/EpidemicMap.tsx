@@ -53,9 +53,12 @@ interface Props {
   movimientos?: { origen: string; destino: string; cantidad: number }[];
   brotes?: Brote[];
   contagiosPorLugar?: { lugar_id: number; lng: number; lat: number; nuevos: number }[];
+  showHeatmap?: boolean;
+  showMovimientos?: boolean;
+  showEventos?: boolean;
 }
 
-export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar }: Props) {
+export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brotes, contagiosPorLugar, showHeatmap = true, showMovimientos = false, showEventos = true }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -253,6 +256,17 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     // Solo al montar: el resto de updates van en el otro efecto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const setVis = (id: string, v: boolean) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
+    };
+    setVis("contagios-heat", showHeatmap);
+    setVis("movimientos", showMovimientos);
+    setVis("eventos", showEventos);
+  }, [mapLoaded, showHeatmap, showMovimientos, showEventos]);
 
   // Actualizar los datos cuando cambian barrios/catalogo.
   useEffect(() => {
