@@ -80,7 +80,7 @@ class Simulacion:
         # ni se altera ninguna decisión.
         self.atribuir = atribuir
         self.registrar_trayectoria = registrar_trayectoria
-        self.eventos = list(eventos or [])
+        self.eventos = sorted(list(eventos or []), key=lambda e: int(e.get("dia", 0)))
         self._eventos_por_dia: dict[int, list[dict]] = {}
         for ev in self.eventos:
             self._eventos_por_dia.setdefault(int(ev.get("dia", 0)), []).append(ev)
@@ -101,6 +101,7 @@ class Simulacion:
         self.conocido = np.full(n, SANO, dtype=np.int8)  # lo que ve la estrategia
         self.vacunado = np.zeros(n, dtype=bool)
         self.fue_infectado = np.zeros(n, dtype=bool)
+        self.variante = np.zeros(n, dtype=np.int8)  # 0 normal,1 acechador,2 chasqueador,3 gordinflón
 
         # Día de infección y tiempo de conversión (incubando -> zombi).
         self.dia_infeccion = np.full(n, -1, dtype=np.int32)
@@ -138,6 +139,11 @@ class Simulacion:
         self._movimientos_hoy: list[dict] = []
         self._zombie_corredor_activo = False
         self._fallo_contencion_activo = False
+        self._acechador_activo = False
+        self._chasqueador_activo = False
+        self._gordinflon_activo = False
+        self._gordinflon_barrio = None
+        self._horda_activa = False
 
         self._sembrar()
 
@@ -194,6 +200,45 @@ class Simulacion:
         elif tipo == "fallo_contencion":
             self._fallo_contencion_activo = True
             self._fallo_contencion_fin = dia + int(ev.get("duracion", 5))
+        elif tipo == "horda_migratoria":
+            self._spawn_variantes(ev, dia, variante=0, cantidad=int(ev.get("intensidad", 5)))
+            self._horda_activa = True
+            self._horda_fin = dia + int(ev.get("duracion", 5))
+        elif tipo == "aparicion_acechador":
+            self._spawn_variantes(ev, dia, variante=1, cantidad=int(ev.get("intensidad", 3)))
+            self._acechador_activo = True
+            self._acechador_fin = dia + int(ev.get("duracion", 7))
+        elif tipo == "aparicion_chasqueador":
+            self._spawn_variantes(ev, dia, variante=2, cantidad=int(ev.get("intensidad", 3)))
+            self._chasqueador_activo = True
+            self._chasqueador_fin = dia + int(ev.get("duracion", 7))
+        elif tipo == "aparicion_gordinflon":
+            self._spawn_variantes(ev, dia, variante=3, cantidad=int(ev.get("intensidad", 2)))
+            self._gordinflon_activo = True
+            self._gordinflon_fin = dia + int(ev.get("duracion", 7))
+            self._gordinflon_barrio = ev.get("barrio_id")
+
+    def _spawn_variantes(self, ev: dict, dia: int, variante: int, cantidad: int) -> None:
+        """Convierte personas sanas/incubando/portadoras en zombis de una variante."""
+        barrio_id = ev.get("barrio_id")
+        if barrio_id not in self._ids_barrio:
+            return
+        pos = self._ids_barrio.index(barrio_id)
+        candidatos = np.where(
+            (self._pos_barrio == pos)
+            & (self.estado != ZOMBI)
+            & (self.estado != INMUNE)
+        )[0]
+        if candidatos.size == 0:
+            candidatos = np.where((self.estado != ZOMBI) & (self.estado != INMUNE))[0]
+        if candidatos.size == 0:
+            return
+        elegidos = self.rng.choice(candidatos, size=min(cantidad, candidatos.size), replace=False)
+        self.estado[elegidos] = ZOMBI
+        self.fue_infectado[elegidos] = True
+        self.dia_infeccion[elegidos] = dia
+        self.tiempo_conversion[elegidos] = 0
+        self.variante[elegidos] = variante
 
     def _infectar(self, personas: np.ndarray, dia: int) -> None:
         """Marca a ``personas`` como INCUBANDO y les asigna su tiempo de conversión."""
@@ -222,6 +267,12 @@ class Simulacion:
         dosis_hoy = int(self.dosis_usadas - self._dosis_prev)
         global_dict["dosis_dia"] = dosis_hoy
         global_dict["lugares_cerrados"] = int(self.cerrado.sum())
+        global_dict["variantes"] = {
+            "normal": int(((self.estado == ZOMBI) & (self.variante == 0)).sum()),
+            "acechador": int(((self.estado == ZOMBI) & (self.variante == 1)).sum()),
+            "chasqueador": int(((self.estado == ZOMBI) & (self.variante == 2)).sum()),
+            "gordinflon": int(((self.estado == ZOMBI) & (self.variante == 3)).sum()),
+        }
 
         # Conteos por barrio.
         pos_nuevos = self._pos_barrio[nuevos] if nuevos.size else np.array([], dtype=np.int64)
@@ -338,6 +389,15 @@ class Simulacion:
                 self._zombie_corredor_activo = False
             if getattr(self, "_fallo_contencion_activo", False) and dia >= getattr(self, "_fallo_contencion_fin", dia + 1):
                 self._fallo_contencion_activo = False
+            if getattr(self, "_acechador_activo", False) and dia >= getattr(self, "_acechador_fin", dia + 1):
+                self._acechador_activo = False
+            if getattr(self, "_chasqueador_activo", False) and dia >= getattr(self, "_chasqueador_fin", dia + 1):
+                self._chasqueador_activo = False
+            if getattr(self, "_gordinflon_activo", False) and dia >= getattr(self, "_gordinflon_fin", dia + 1):
+                self._gordinflon_activo = False
+                self._gordinflon_barrio = None
+            if getattr(self, "_horda_activa", False) and dia >= getattr(self, "_horda_fin", dia + 1):
+                self._horda_activa = False
 
             if self.registrar_trayectoria:
                 self._registrar_trayectoria(dia, nuevos)
@@ -451,7 +511,11 @@ class Simulacion:
         asist_arista = self._asist_tipo[self.red.tipo_lugar[lugar]]
         presente = self.rng.random(persona.size) < asist_arista
         # Lugares cerrados: nadie presente.
-        presente &= ~self.cerrado[lugar]
+        if getattr(self, "_gordinflon_activo", False):
+            bloqueo = self.cerrado[lugar] & (self.rng.random(persona.size) < 0.5)
+            presente &= ~bloqueo
+        else:
+            presente &= ~self.cerrado[lugar]
 
         # Personal del hospital protegido en el hospital desde dia_medidas.
         if dia >= self.params.dia_medidas:
@@ -462,6 +526,9 @@ class Simulacion:
         # Infectividad por persona (según estado real).
         infect_persona = np.zeros(self.red.n_personas, dtype=np.float64)
         infect_persona[self.estado == ZOMBI] = 1.0
+        # Chasqueador: mayor riesgo en encuentros cercanos.
+        if getattr(self, "_chasqueador_activo", False):
+            infect_persona[(self.estado == ZOMBI) & (self.variante == 2)] = 1.5
         factor_portador = self.params.infect_portador
         if getattr(self, "_zombie_corredor_activo", False):
             factor_portador *= 2.0
@@ -480,6 +547,10 @@ class Simulacion:
         # --- Movilidad zombie (reproducible, agregada) ---
         self._movimientos_hoy = []
         mv = float(self.params.movilidad_zombie)
+        if getattr(self, "_acechador_activo", False):
+            mv = max(mv, 0.05) * 1.5
+        if getattr(self, "_gordinflon_activo", False):
+            mv *= 0.5
         if mv > 0:
             zombis = np.where(self.estado == ZOMBI)[0]
             if zombis.size > 0:
@@ -517,6 +588,8 @@ class Simulacion:
         via = getattr(self.params, "via_transmision", "combinada")
         beta_mordida = self.params.beta if via in ("mordidas", "combinada") else 0.0
         beta_espora = getattr(self.params, "beta_espora", self.params.beta) if via in ("esporas", "combinada") else 0.0
+        if getattr(self, "_gordinflon_activo", False):
+            beta_espora += 0.01
         lambda_lugar = (beta_mordida + beta_espora) * peso_lugar * carga_lugar / denom
 
         # Suma de lambdas por persona (solo aristas presentes).
@@ -628,10 +701,13 @@ class Simulacion:
     # ------------------------------------------------------------------ #
     def _detectar(self) -> None:
         """Marca como conocidos a algunos zombis y portadores (prob. diaria)."""
+        p_zombi = self.params.p_det_zombi
+        if getattr(self, "_acechador_activo", False):
+            p_zombi *= 0.5
         zombis = np.where(self.estado == ZOMBI)[0]
         if zombis.size > 0:
             sorteo = self.rng.random(zombis.size)
-            detectados = zombis[sorteo < self.params.p_det_zombi]
+            detectados = zombis[sorteo < p_zombi]
             self.conocido[detectados] = ZOMBI
 
         portadores = np.where(self.estado == PORTADOR)[0]
