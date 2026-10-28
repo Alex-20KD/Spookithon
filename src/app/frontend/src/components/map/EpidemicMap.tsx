@@ -22,9 +22,11 @@ const DARK_STYLE = {
   name: "PLAGA ZERO Base",
   sources: {},
   layers: [
-    { id: "background", type: "background", paint: { "background-color": "#0A1219" } },
+    { id: "background", type: "background", paint: { "background-color": "#0F172A" } },
   ],
 };
+
+const OPENFREEMAP_DARK = "https://tiles.openfreemap.org/styles/dark";
 
 function getStyle(): string | typeof DARK_STYLE {
   const url = import.meta.env.VITE_MAP_STYLE_URL as string | undefined;
@@ -34,7 +36,8 @@ function getStyle(): string | typeof DARK_STYLE {
     (import.meta.env.VITE_MAPTILER_API_KEY as string | undefined) ||
     (import.meta.env.VITE_MAPTILER_TOKEN as string | undefined);
   if (key) return `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${key}`;
-  return DARK_STYLE;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return DARK_STYLE;
+  return OPENFREEMAP_DARK;
 }
 
 
@@ -88,8 +91,8 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         style: getStyle() as maplibregl.StyleSpecification | string,
         center: centro,
         zoom: 12.4,
-        pitch: 60,
-        bearing: -15,
+        pitch: 0,
+        bearing: 0,
         maxPitch: 85,
       });
     } catch {
@@ -98,6 +101,8 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     }
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    const ro = new ResizeObserver(() => map.resize());
+    if (containerRef.current) ro.observe(containerRef.current);
     // Un fallo de los tiles del estilo base externo (p. ej. el tile server
     // público) NO debe ocultar el mapa: los barrios, edificios y el territorio
     // de Manta se dibujan como capas GeoJSON locales encima. Solo lo registramos.
@@ -106,6 +111,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     });
 
     map.on("load", () => {
+      const baseStyleLayerIds = new Set((map.getStyle().layers || []).map((l) => l.id));
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("mask", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -141,7 +147,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         type: "fill",
         source: "mask",
         paint: {
-          "fill-color": "#080D13",
+          "fill-color": "#0B1620",
           "fill-opacity": 1,
         },
       });
@@ -207,8 +213,8 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         type: "fill",
         source: "manta",
         paint: {
-          "fill-color": "#0C141D",
-          "fill-opacity": 0.35,
+          "fill-color": "#111827",
+          "fill-opacity": 0.12,
         },
       });
       map.addLayer({
@@ -216,8 +222,9 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         type: "line",
         source: "manta",
         paint: {
-          "line-color": "#4DA8FF",
-          "line-width": 1.5,
+          "line-color": "#5B9BD5",
+          "line-width": 1.2,
+          "line-opacity": 0.7,
         },
       });
 
@@ -265,10 +272,26 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         // El proveedor puede no ofrecer geometrías compatibles; se ignora.
       }
 
+      // Mantener calles/etiquetas del mapa base visibles también fuera del
+      // límite territorial: las capas de línea/símbolo del estilo base se
+      // suben por encima de la máscara (que sigue recortando el heatmap).
+      for (const l of map.getStyle().layers || []) {
+        if (baseStyleLayerIds.has(l.id) && (l.type === "line" || l.type === "symbol")) {
+          try { map.moveLayer(l.id); } catch { /* ignore */ }
+        }
+      }
+      // Restaurar nuestras capas epidemiológicas por encima de las del base.
+      for (const id of ["edificios", "contagios-points", "movimientos", "eventos", "manta-line", "manta-fill"]) {
+        if (map.getLayer(id)) {
+          try { map.moveLayer(id); } catch { /* ignore */ }
+        }
+      }
+
       setMapLoaded(true);
     });
 
     return () => {
+      ro.disconnect();
       popupRef.current?.remove();
       map.remove();
       mapRef.current = null;
