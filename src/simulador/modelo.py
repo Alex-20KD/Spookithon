@@ -70,10 +70,12 @@ class Simulacion:
         atribuir: bool = False,
         registrar_trayectoria: bool = False,
         eventos: list | None = None,
+        intervenciones: list | None = None,
     ):
         self.params = params
         self.red = red
         self.estrategia = estrategia
+        self.intervenciones = list(intervenciones or [])
         # Atribución fraccional de infector (para medir R0). Apagada por
         # defecto: cuando está apagada, el modelo produce EXACTAMENTE los mismos
         # resultados que antes porque no se consumen números aleatorios nuevos
@@ -139,6 +141,12 @@ class Simulacion:
         self._movimientos_hoy: list[dict] = []
         self._zombie_corredor_activo = False
         self._fallo_contencion_activo = False
+        self._bloqueo_activo = False
+        self._vigilancia_intensiva_activa = False
+        self._evacuacion_activa = False
+        self._aislamiento_focalizado_activo = False
+        self._refuerzo_contencion_activo = False
+        self._control_esporas_activo = False
         self._acechador_activo = False
         self._chasqueador_activo = False
         self._gordinflon_activo = False
@@ -399,6 +407,11 @@ class Simulacion:
             if getattr(self, "_horda_activa", False) and dia >= getattr(self, "_horda_fin", dia + 1):
                 self._horda_activa = False
 
+            for flag in ("_bloqueo_activo", "_vigilancia_intensiva_activa", "_evacuacion_activa", "_aislamiento_focalizado_activo", "_refuerzo_contencion_activo", "_control_esporas_activo"):
+                fin_attr = flag + "_fin"
+                if getattr(self, flag, False) and dia >= getattr(self, fin_attr, dia + 1):
+                    setattr(self, flag, False)
+
             if self.registrar_trayectoria:
                 self._registrar_trayectoria(dia, nuevos)
                 self._dosis_prev = self.dosis_usadas
@@ -436,20 +449,42 @@ class Simulacion:
     # ------------------------------------------------------------------ #
     # (a) Estrategia
     # ------------------------------------------------------------------ #
-    def _aplicar_estrategia(self, dia: int) -> None:
-        acciones = self.estrategia.decidir(self, dia)
+    def _resolver_estrategia(self, nombre):
+        from . import estrategias as _e
+        if hasattr(nombre, "decidir"):
+            return nombre
+        return _e.por_nombre(nombre)
 
-        # Cierres: como máximo max_cierres lugares.
-        cerrar = np.asarray(acciones.cerrar, dtype=np.int64).ravel()
+    def _aplicar_estrategia(self, dia: int) -> None:
+        activas = [self._resolver_estrategia(self.estrategia)]
+        for iv in self.intervenciones:
+            d0 = int(iv.get("dia", 0))
+            dur = int(iv.get("duracion", 10**9))
+            if d0 <= dia <= d0 + dur:
+                activas.append(self._resolver_estrategia(iv.get("estrategia")))
+
+        vacunar_list = []
+        cerrar_list = []
+        for st in activas:
+            acciones = st.decidir(self, dia)
+            if getattr(acciones, "vacunar", None) is not None and np.asarray(acciones.vacunar).size > 0:
+                vacunar_list.append(np.asarray(acciones.vacunar, dtype=np.int64).ravel())
+            if getattr(acciones, "cerrar", None) is not None and np.asarray(acciones.cerrar).size > 0:
+                cerrar_list.append(np.asarray(acciones.cerrar, dtype=np.int64).ravel())
+
+        if cerrar_list:
+            cerrar = np.unique(np.concatenate(cerrar_list))
+        else:
+            cerrar = np.array([], dtype=np.int64)
         self.cerrado[:] = False
         if cerrar.size > 0:
             cerrar = cerrar[: self.params.max_cierres]
             self.cerrado[cerrar] = True
             self.dias_cierre += int(cerrar.size)
 
-        # Vacunas: solo desde dia_vacuna y hasta dosis_dia por día.
-        if dia >= self.params.dia_vacuna:
-            self._vacunar(np.asarray(acciones.vacunar, dtype=np.int64).ravel())
+        vacunar = np.unique(np.concatenate(vacunar_list)) if vacunar_list else np.array([], dtype=np.int64)
+        if dia >= self.params.dia_vacuna and vacunar.size > 0:
+            self._vacunar(vacunar)
 
     def _vacunar(self, elegidos: np.ndarray) -> None:
         """Aplica dosis a ``elegidos``.
@@ -480,7 +515,7 @@ class Simulacion:
         sanos = elegidos[self.estado[elegidos] == SANO]
         if sanos.size > 0:
             eficacia = self.params.eficacia_vacuna
-            if getattr(self, "_fallo_contencion_activo", False):
+            if getattr(self, "_fallo_contencion_activo", False) and not getattr(self, "_refuerzo_contencion_activo", False):
                 eficacia *= 0.5
             protegidos = sanos[sorteo[: sanos.size] < eficacia]
             self.estado[protegidos] = INMUNE
@@ -516,6 +551,8 @@ class Simulacion:
             presente &= ~bloqueo
         else:
             presente &= ~self.cerrado[lugar]
+        if getattr(self, "_aislamiento_focalizado_activo", False):
+            presente &= self.rng.random(persona.size) < 0.7
 
         # Personal del hospital protegido en el hospital desde dia_medidas.
         if dia >= self.params.dia_medidas:
@@ -551,6 +588,8 @@ class Simulacion:
             mv = max(mv, 0.05) * 1.5
         if getattr(self, "_gordinflon_activo", False):
             mv *= 0.5
+        if getattr(self, "_bloqueo_activo", False):
+            mv *= 0.2
         if mv > 0:
             zombis = np.where(self.estado == ZOMBI)[0]
             if zombis.size > 0:
@@ -590,6 +629,8 @@ class Simulacion:
         beta_espora = getattr(self.params, "beta_espora", self.params.beta) if via in ("esporas", "combinada") else 0.0
         if getattr(self, "_gordinflon_activo", False):
             beta_espora += 0.01
+        if getattr(self, "_control_esporas_activo", False):
+            beta_espora *= 0.5
         lambda_lugar = (beta_mordida + beta_espora) * peso_lugar * carga_lugar / denom
 
         # Suma de lambdas por persona (solo aristas presentes).
@@ -704,6 +745,8 @@ class Simulacion:
         p_zombi = self.params.p_det_zombi
         if getattr(self, "_acechador_activo", False):
             p_zombi *= 0.5
+        if getattr(self, "_vigilancia_intensiva_activa", False):
+            p_zombi = min(1.0, p_zombi * 2.0)
         zombis = np.where(self.estado == ZOMBI)[0]
         if zombis.size > 0:
             sorteo = self.rng.random(zombis.size)

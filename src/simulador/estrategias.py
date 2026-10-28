@@ -166,6 +166,87 @@ class Anillo:
         return Acciones(vacunar=elegidos)
 
 
+class BloqueoEmergencia:
+    nombre = "BloqueoEmergencia"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._bloqueo_activo = True
+        sim._bloqueo_fin = dia + int(getattr(sim.params, "duracion_bloqueo", 7))
+        return Acciones()
+
+
+class VigilanciaIntensiva:
+    nombre = "VigilanciaIntensiva"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._vigilancia_intensiva_activa = True
+        sim._vigilancia_intensiva_fin = dia + int(getattr(sim.params, "duracion_vigilancia", 10))
+        return Acciones()
+
+
+class EvacuacionPreventiva:
+    nombre = "EvacuacionPreventiva"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._evacuacion_activa = True
+        sim._evacuacion_fin = dia + int(getattr(sim.params, "duracion_evacuacion", 7))
+        return Acciones()
+
+
+class AislamientoFocalizado:
+    nombre = "AislamientoFocalizado"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._aislamiento_focalizado_activo = True
+        sim._aislamiento_focalizado_fin = dia + int(getattr(sim.params, "duracion_aislamiento", 7))
+        return Acciones()
+
+
+class RefuerzoContencion:
+    nombre = "RefuerzoContencion"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._refuerzo_contencion_activo = True
+        sim._refuerzo_contencion_fin = dia + int(getattr(sim.params, "duracion_refuerzo", 10))
+        return Acciones()
+
+
+class ControlEsporas:
+    nombre = "ControlEsporas"
+
+    def decidir(self, sim, dia: int) -> Acciones:
+        sim._control_esporas_activo = True
+        sim._control_esporas_fin = dia + int(getattr(sim.params, "duracion_control_esporas", 10))
+        return Acciones()
+
+
 def todas() -> list:
     """Devuelve una instancia de cada una de las cinco estrategias."""
     return [Nada(), Azar(), Centralidad(), CierresMasCentralidad(), Anillo()]
+    mapping = {
+        "Nada": Nada,
+        "Azar": Azar,
+        "Centralidad": Centralidad,
+        "CierresMasCentralidad": CierresMasCentralidad,
+        "Anillo": Anillo,
+        "BloqueoEmergencia": BloqueoEmergencia,
+        "VigilanciaIntensiva": VigilanciaIntensiva,
+        "EvacuacionPreventiva": EvacuacionPreventiva,
+        "AislamientoFocalizado": AislamientoFocalizado,
+        "RefuerzoContencion": RefuerzoContencion,
+        "ControlEsporas": ControlEsporas,
+    }
+    if nombre not in mapping:
+        raise ValueError(f"Estrategia desconocida: {nombre}")
+    return mapping[nombre]()
+
+
+def especiales() -> list:
+    return [
+        BloqueoEmergencia(),
+        VigilanciaIntensiva(),
+        EvacuacionPreventiva(),
+        AislamientoFocalizado(),
+        RefuerzoContencion(),
+        ControlEsporas(),
+    ]
