@@ -116,6 +116,30 @@ export default function Results() {
 
   const [brotesResultados, setBrotesResultados] = useState<Record<string, CompararResponse>>({});
   const [cargandoLocal, setCargandoLocal] = useState(false);
+  const calcularMatriz = async () => {
+    setCargandoLocal(true);
+    setErrorLocal(null);
+    const res: Record<string, CompararResponse> = {};
+    await Promise.all(
+      BROTES_COMPARAR.map(async (sc) => {
+        const ev = eventosParaEscenario(sc, brotes);
+        const cuerpo = {
+          ...params,
+          via_transmision: viaTransmision,
+          eventos: ev,
+          n_corridas: params.n_corridas,
+        };
+        try {
+          const r = await compararEstrategias(cuerpo as any);
+          res[sc] = r;
+        } catch (e) {
+          // ignore
+        }
+      }),
+    );
+    setBrotesResultados(res);
+    setCargandoLocal(false);
+  };
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
   // Modo estrategias: reutiliza el flujo global.
@@ -470,6 +494,63 @@ export default function Results() {
           </Card>
         </>
       )}
+
+      <div style={{ height: 16 }} />
+
+      <Card title="Impacto de brotes por estrategia">
+        {Object.keys(brotesResultados).length === 0 ? (
+          <div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+              Calcula la matriz completa de brotes × estrategias (puede tardar).
+            </div>
+            <button className="btn primary" onClick={calcularMatriz} disabled={cargandoLocal}>
+              {cargandoLocal ? "Calculando…" : "Calcular matriz"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Brote o escenario</th>
+                  <th>Estrategia</th>
+                  <th>Infectados (media)</th>
+                  <th>Infectados p10–p90</th>
+                  <th>Salvados (media)</th>
+                  <th>Salvados p10–p90</th>
+                  <th>Zombis finales</th>
+                  <th>Mejora vs no intervenir</th>
+                </tr>
+              </thead>
+              <tbody>
+                {BROTES_COMPARAR.map((sc) => {
+                  const r = brotesResultados[sc];
+                  if (!r) return null;
+                  return r.estrategias.map((e) => {
+                    const zombisFinales = e.curva_diaria?.media?.[e.curva_diaria.media.length - 1] ?? 0;
+                    return (
+                      <tr key={`${sc}-${e.nombre}`}>
+                        <td>{ESCENARIOS.find((x) => x.value === sc)?.label ?? sc}</td>
+                        <td>{nombreAmigable(e.nombre)}</td>
+                        <td>{num(e.infectados_media)}</td>
+                        <td>
+                          {num(e.infectados_p10)} – {num(e.infectados_p90)}
+                        </td>
+                        <td>{num(e.salvados_media)}</td>
+                        <td>
+                          {num(e.salvados_p10)} – {num(e.salvados_p90)}
+                        </td>
+                        <td>{num(zombisFinales)}</td>
+                        <td>{e.pct_mejor_que_nada.toFixed(0)}%</td>
+                      </tr>
+                    );
+                  });
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <div style={{ height: 16 }} />
       <EventsPanel resultado={resultado} />

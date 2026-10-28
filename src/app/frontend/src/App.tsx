@@ -5,7 +5,7 @@ import MapPage from "./pages/MapPage";
 import SimulatorConfig from "./pages/SimulatorConfig";
 import Strategies from "./pages/Strategies";
 import Results from "./pages/Results";
-
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   return (
@@ -15,7 +15,7 @@ export default function App() {
         <Route path="/mapa" element={<MapPage />} />
         <Route path="/simulador" element={<SimulatorConfig />} />
         <Route path="/estrategias" element={<Strategies />} />
-        <Route path="/resultados" element={<Results />} />
+        <Route path="/resultados" element={<ErrorBoundary><Results /></ErrorBoundary>} />
       </Routes>
     </Layout>
   );
