@@ -18,6 +18,9 @@ interface MainMenuProps {
   onPlayTrailer: () => void;
 }
 
+// URL del panel/dashboard (app aparte). Se lee de VITE_DASHBOARD_URL; si no, local por defecto.
+const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL ?? 'http://localhost:5173';
+
 const MODES: { id: PlayMode; icon: string; name: string; desc: string }[] = [
   { id: 'government', icon: '🏛️', name: 'MODO GOBIERNO', desc: 'Salva a Manabí del apocalipsis zombie' },
   { id: 'virus', icon: '🦠', name: 'MODO VIRUS', desc: 'Infecta todos los cantones de Manabí' },
@@ -74,6 +77,15 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStart, onPlayTrailer }) => {
           </button>
           <button className="gothic-button trailer-button" onClick={() => open({ kind: 'tutorial' })}>
             📘 Ver tutorial
+          </button>
+          <button
+            className="gothic-button trailer-button"
+            onClick={() => {
+              playSound('click');
+              window.location.href = DASHBOARD_URL;
+            }}
+          >
+            ← Volver al panel
           </button>
         </div>
 
