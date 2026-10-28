@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ComposedChart,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine,
 } from "recharts";
 import { useSimulation } from "../context/SimulationContext";
 import { compararEstrategias } from "../services/apiClient";
@@ -23,6 +24,15 @@ import { nombreAmigable } from "../utils/estrategias";
 import type { ResultadoEstrategia } from "../types/api";
 
 const num = (n: number) => Math.round(n).toLocaleString("es-EC");
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: 8,
+  background: "#0C141D",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+};
 
 /** Construye los puntos de la curva con la banda p10-p90 para recharts. */
 function datosCurva(e: ResultadoEstrategia) {
@@ -38,24 +48,56 @@ function datosCurva(e: ResultadoEstrategia) {
 
 export default function Results() {
   const { resultado, cargando, error, params, viaTransmision } = useSimulation();
-  const [estrategiaSel, setEstrategiaSel] = useState<string | null>(null);
+  const [estrategiaGrafico, setEstrategiaGrafico] = useState<string>("Nada");
+  const [resultadoGrafico, setResultadoGrafico] = useState<any>(null);
+  const [cargandoGrafico, setCargandoGrafico] = useState(false);
   const [brotesResultados, setBrotesResultados] = useState<Record<string, any>>({});
   const [cargandoMatriz, setCargandoMatriz] = useState(false);
 
   const estrategias = resultado?.estrategias ?? [];
 
-  const seleccionada = useMemo(() => {
-    const lista = resultado?.estrategias ?? [];
-    if (lista.length === 0) return null;
-    const porNombre = lista.find((e) => e.nombre === estrategiaSel);
-    return (
-      porNombre ??
-      lista.find((e) => e.nombre === resultado?.mejor_estrategia) ??
-      lista[0]
-    );
-  }, [resultado, estrategiaSel]);
 
-  const curva = seleccionada ? datosCurva(seleccionada) : [];
+
+  const seleccionadaGrafico = useMemo(() => {
+    const lista = resultadoGrafico?.estrategias ?? [];
+    if (!lista.length) return null;
+    if (ESPECIALES.indexOf(estrategiaGrafico) !== -1) {
+      return lista.find((e: any) => e.nombre === "Nada") ?? lista[0];
+    }
+    return lista.find((e: any) => e.nombre === estrategiaGrafico) ?? lista[0];
+  }, [resultadoGrafico, estrategiaGrafico]);
+
+  const curvaGrafico = seleccionadaGrafico ? datosCurva(seleccionadaGrafico) : [];
+
+  const ESPECIALES = ["BloqueoEmergencia", "VigilanciaIntensiva", "EvacuacionPreventiva", "AislamientoFocalizado", "RefuerzoContencion", "ControlEsporas"];
+
+  useEffect(() => {
+    if (ESPECIALES.indexOf(estrategiaGrafico) === -1) {
+      setResultadoGrafico(resultado);
+      return;
+    }
+    let cancelled = false;
+    async function run() {
+      setCargandoGrafico(true);
+      const cuerpo = {
+        ...params,
+        via_transmision: viaTransmision,
+        eventos: [],
+        intervenciones: [{ dia: 0, estrategia: estrategiaGrafico, duracion: 60 }],
+        n_corridas: params.n_corridas,
+      };
+      try {
+        const r = await compararEstrategias(cuerpo as any);
+        if (!cancelled) setResultadoGrafico(r);
+      } catch (e) {
+        if (!cancelled) setResultadoGrafico(null);
+      } finally {
+        if (!cancelled) setCargandoGrafico(false);
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [resultado, estrategiaGrafico, params, viaTransmision]);
 
   const ESCENARIOS_BROTES = ["base", "brote_secundario", "zombie_corredor", "horda_migratoria", "fallo_contencion", "acechador", "chasqueador", "gordinflon"];
   const eventosParaEscenario = (sc: string) => {
@@ -164,30 +206,44 @@ export default function Results() {
 
       <div style={{ height: 16 }} />
 
-      <Card title={`Curva de zombis por día · banda p10–p90 — ${seleccionada?.nombre ?? ""}`}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          {estrategias.map((e) => (
-            <button
-              key={e.nombre}
-              className={`btn ${seleccionada?.nombre === e.nombre ? "primary" : "ghost"}`}
-              style={{ padding: "6px 10px", fontSize: 12 }}
-              onClick={() => setEstrategiaSel(e.nombre)}
-            >
-              {nombreAmigable(e.nombre)}
-            </button>
-          ))}
+      <Card title={`Curva de zombis por día · banda p10–p90 — ${estrategiaGrafico}`}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, alignItems: "center" }}>
+          <select value={estrategiaGrafico} onChange={(e) => setEstrategiaGrafico(e.target.value)} style={{ ...selectStyle, width: 220 }} disabled={cargandoGrafico}>
+            <optgroup label="Originales">
+              <option value="Nada">Sin intervención</option>
+              <option value="CierresMasCentralidad">Cierres + centralidad</option>
+              <option value="Anillo">Anillo perimetral</option>
+              <option value="Centralidad">Por centralidad</option>
+              <option value="Azar">Vacunación al azar</option>
+            </optgroup>
+            <optgroup label="Especiales">
+              <option value="BloqueoEmergencia">Bloqueo de emergencia</option>
+              <option value="VigilanciaIntensiva">Vigilancia intensiva</option>
+              <option value="EvacuacionPreventiva">Evacuación preventiva</option>
+              <option value="AislamientoFocalizado">Aislamiento focalizado</option>
+              <option value="RefuerzoContencion">Refuerzo de contención</option>
+              <option value="ControlEsporas">Control de esporas</option>
+            </optgroup>
+          </select>
+          {cargandoGrafico && <span className="loading-inline"><span className="spinner" /> Cargando…</span>}
         </div>
         <div style={{ width: "100%", height: 320 }}>
           <ResponsiveContainer>
-            <ComposedChart data={curva}>
+            <ComposedChart data={curvaGrafico}>
               <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
               <XAxis dataKey="dia" stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
               <YAxis stroke="#94A3B8" tick={{ fill: "#CBD5E1", fontSize: 12 }} />
-              <Tooltip content={<CurveTooltip estrategia={seleccionada?.nombre} />} cursor={{ stroke: "#60A5FA", strokeWidth: 1 }} />
+              <Tooltip content={<CurveTooltip estrategia={estrategiaGrafico} />} cursor={{ stroke: "#60A5FA", strokeWidth: 1 }} />
               <Legend wrapperStyle={{ color: "#CBD5E1", fontSize: 12 }} />
               <Area type="monotone" dataKey="p10" stackId="banda" stroke="none" fill="transparent" name="p10" legendType="none" />
               <Area type="monotone" dataKey="banda" stackId="banda" stroke="none" fill="rgba(96,165,250,0.20)" name="Rango p10–p90" />
               <Line type="monotone" dataKey="media" stroke="#FF5263" strokeWidth={2} dot={false} activeDot={{ r: 5, fill: "#FF5263", stroke: "#F1F5F9" }} name="Media" />
+              {ESPECIALES.indexOf(estrategiaGrafico) !== -1 && (
+                <>
+                  <ReferenceLine x={0} stroke="#38E89A" strokeDasharray="4 4" label={{ value: "Inicio", fill: "#38E89A", fontSize: 11 }} />
+                  <ReferenceLine x={60} stroke="#FF7A45" strokeDasharray="4 4" label={{ value: "Fin", fill: "#FF7A45", fontSize: 11 }} />
+                </>
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
