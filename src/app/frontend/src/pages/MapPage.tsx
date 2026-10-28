@@ -290,7 +290,7 @@ export default function MapPage() {
                 <div>Zombis activos: <strong>{num(diaGlobal.ZOMBI)}</strong></div>
                 <div>Nuevos contagios: <strong>{num(diaGlobal.nuevos_contagios)}</strong></div>
                 <div>Inmunes: <strong>{num(diaGlobal.INMUNE)}</strong></div>
-                <div>Infectados acumulados: <strong>{num(trayectoria?.infectados_totales ?? 0)}</strong></div>
+                <div>Infectados acumulados (día): <strong>{num(barriosDia.reduce((a, b) => a + (b.infectados_media ?? 0), 0))}</strong></div>
               </div>
             </Card>
           )}
