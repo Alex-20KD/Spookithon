@@ -42,20 +42,7 @@ function getStyle(): string | typeof DARK_STYLE {
   return DARK_STYLE;
 }
 
-/** Color por nivel de riesgo relativo (0..1 respecto al barrio más afectado). */
-function colorRiesgo(ratio: number): string {
-  if (ratio < 0.25) return "#38E89A"; // bajo
-  if (ratio < 0.5) return "#FF7A45"; // medio
-  if (ratio < 0.75) return "#FF4D5A"; // alto
-  return "#8B1E2D"; // crítico
-}
 
-function nivelRiesgo(ratio: number): string {
-  if (ratio < 0.25) return "Bajo";
-  if (ratio < 0.5) return "Medio";
-  if (ratio < 0.75) return "Alto";
-  return "Crítico";
-}
 
 
 
@@ -108,7 +95,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
     map.on("error", () => setMapError(true));
 
     map.on("load", () => {
-      map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("contagios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -137,19 +123,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         },
       });
 
-      // Núcleo del barrio.
-      map.addLayer({
-        id: "barrios",
-        type: "circle",
-        source: "barrios",
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["get", "ratio"], 0, 6, 1, 16],
-          "circle-color": ["get", "color"],
-          "circle-stroke-width": 1.5,
-          "circle-stroke-color": "#E6EDF3",
-          "circle-opacity": 0.9,
-        },
-      });
       // Edificios de referencia (hospital/mercado/colegios).
       map.addLayer({
         id: "edificios",
@@ -168,6 +141,17 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
           "circle-stroke-width": 1,
           "circle-stroke-color": "#0C141D",
           "circle-opacity": 0.95,
+        },
+      });
+
+      map.addLayer({
+        id: "contagios-points",
+        type: "circle",
+        source: "contagios",
+        paint: {
+          "circle-radius": 4,
+          "circle-color": "#FF4D5A",
+          "circle-opacity": 0,
         },
       });
 
@@ -214,27 +198,25 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         },
       });
 
-      map.on("mouseenter", "barrios", (e) => {
+      map.on("mouseenter", "contagios-points", (e) => {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0];
         if (!f) return;
         const props = f.properties as Record<string, unknown>;
-        const ratio = Number(props.ratio ?? 0);
         popupRef.current?.remove();
         popupRef.current = new maplibregl.Popup({ closeButton: true, offset: 12, className: "map-popup-dark" })
           .setLngLat(e.lngLat)
           .setHTML(
             `<div style="color:#F1F5F9;font-size:13px;min-width:160px">
-               <div style="font-weight:700;font-size:14px;margin-bottom:4px">${props.nombre}</div>
-               <div>Infectados (media): <strong>${Number(props.infectados).toLocaleString("es-EC")}</strong></div>
-               <div>Nivel de riesgo: <strong style="color:${props.color}">${nivelRiesgo(ratio)}</strong></div>
+               <div style="font-weight:700;font-size:14px;margin-bottom:4px">Contagio registrado</div>
+               <div>Nuevos contagios: <strong>${Number(props.nuevos).toLocaleString("es-EC")}</strong></div>
                <div>Día de simulación: <strong>${dia ?? 0}</strong></div>
-               <div style="font-size:11px;color:#8B9BB0;margin-top:4px">Datos agregados (real) · animación por día ilustrativa</div>
+               <div style="font-size:11px;color:#8B9BB0;margin-top:4px">Datos agregados (real)</div>
              </div>`,
           )
           .addTo(map);
       });
-      map.on("mouseleave", "barrios", () => {
+      map.on("mouseleave", "contagios-points", () => {
         map.getCanvas().style.cursor = "";
         popupRef.current?.remove();
         popupRef.current = null;
@@ -276,30 +258,6 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
-
-    const maxInf = Math.max(
-      1,
-      ...barrios.map((b) => b.infectados_media ?? 0),
-    );
-
-    const features = conGeo.map((b) => {
-      const inf = b.infectados_media ?? 0;
-      const ratio = inf / maxInf;
-      return {
-        type: "Feature" as const,
-        geometry: { type: "Point" as const, coordinates: [b.lng as number, b.lat as number] },
-        properties: {
-          nombre: b.nombre,
-          infectados: Math.round(inf),
-          ratio,
-          color: colorRiesgo(ratio),
-        },
-      };
-    });
-    (map.getSource("barrios") as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection",
-      features,
-    });
 
     const contagiosFeatures = (contagiosPorLugar ?? []).map((c) => ({
       type: "Feature" as const,
