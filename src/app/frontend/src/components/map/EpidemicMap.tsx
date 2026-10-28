@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { BarrioMapa, CatalogoResponse } from "../../types/api";
@@ -56,6 +56,52 @@ function nivelRiesgo(ratio: number): string {
   return "Crítico";
 }
 
+
+function generarHexGrid(barrios: BarrioMapa[], sizeDeg = 0.0045): { id: string; lng: number; lat: number; polygon: [number, number][] }[] {
+  if (!barrios.length) return [];
+  const lngs = barrios.map((b) => b.lng as number).filter((v) => v != null);
+  const lats = barrios.map((b) => b.lat as number).filter((v) => v != null);
+  const minLng = Math.min(...lngs) - 0.02;
+  const maxLng = Math.max(...lngs) + 0.02;
+  const minLat = Math.min(...lats) - 0.02;
+  const maxLat = Math.max(...lats) + 0.02;
+
+  const hexes: { id: string; lng: number; lat: number; polygon: [number, number][] }[] = [];
+  let idx = 0;
+  const hexW = sizeDeg * Math.sqrt(3);
+  const hexH = sizeDeg * 1.5;
+  for (let lat = minLat; lat <= maxLat; lat += hexH * 0.75) {
+    const row = Math.round((lat - minLat) / (hexH * 0.75));
+    const offset = row % 2 === 0 ? 0 : hexW / 2;
+    for (let lng = minLng + offset; lng <= maxLng; lng += hexW) {
+      const poly: [number, number][] = [];
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 180) * (60 * i);
+        const x = lng + sizeDeg * Math.cos(angle);
+        const y = lat + sizeDeg * Math.sin(angle);
+        poly.push([x, y]);
+      }
+      poly.push(poly[0]);
+      hexes.push({ id: `hex-${idx++}`, lng, lat, polygon: poly });
+    }
+  }
+  return hexes;
+}
+
+function hexNearestBarrio(lng: number, lat: number, barrios: BarrioMapa[]): string | null {
+  let best: string | null = null;
+  let bestD = Infinity;
+  for (const b of barrios) {
+    if (b.lat == null || b.lng == null) continue;
+    const d = (b.lng - lng) ** 2 + (b.lat - lat) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = b.id;
+    }
+  }
+  return best;
+}
+
 interface Props {
   barrios: BarrioMapa[];
   catalogo?: CatalogoResponse | null;
@@ -73,6 +119,23 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
 
   // Centro: promedio de coordenadas de los barrios con geo válida, o Manta.
   const conGeo = barrios.filter((b) => b.lat != null && b.lng != null);
+
+  const hexGrid = useMemo(() => generarHexGrid(conGeo.length ? conGeo : barrios, 0.004), [barrios]);
+  const hexesPorBarrio = useMemo(() => {
+    const map = new Map<string, typeof hexGrid>();
+    for (const h of hexGrid) {
+      const bid = hexNearestBarrio(h.lng, h.lat, conGeo.length ? conGeo : barrios);
+      if (!bid) continue;
+      if (!map.has(bid)) map.set(bid, []);
+      map.get(bid)!.push(h);
+    }
+    for (const [bid, hs] of map) {
+      const b = (conGeo.length ? conGeo : barrios).find((x) => x.id === bid);
+      if (!b) continue;
+      hs.sort((a, c) => (a.lng - (b.lng as number)) ** 2 + (a.lat - (b.lat as number)) ** 2 - ((c.lng - (b.lng as number)) ** 2 + (c.lat - (b.lat as number)) ** 2));
+    }
+    return map;
+  }, [hexGrid, barrios]);
   const centro: [number, number] = conGeo.length
     ? [
         conGeo.reduce((a, b) => a + (b.lng as number), 0) / conGeo.length,
@@ -106,6 +169,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       map.addSource("barrios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("edificios", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("movimientos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addSource("hexes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addSource("eventos", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
       // Heatmap de contagios (agregado por barrio).
@@ -199,6 +263,26 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
         },
       });
 
+      map.addLayer({
+        id: "hexes-fill",
+        type: "fill",
+        source: "hexes",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": ["get", "opacity"],
+        },
+      });
+      map.addLayer({
+        id: "hexes-line",
+        type: "line",
+        source: "hexes",
+        paint: {
+          "line-color": "#263746",
+          "line-width": 0.5,
+          "line-opacity": 0.4,
+        },
+      });
+
       map.on("mouseenter", "barrios", (e) => {
         map.getCanvas().style.cursor = "pointer";
         const f = e.features?.[0];
@@ -286,6 +370,32 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features,
     });
 
+    const maxInfHex = Math.max(1, ...barrios.map((b) => b.infectados_media ?? 0));
+    const hexFeatures: any[] = [];
+    for (const b of barrios) {
+      const acum = b.infectados_media ?? 0;
+      if (acum <= 0) continue;
+      const hs = hexesPorBarrio.get(b.id) ?? [];
+      const ratio = acum / maxInfHex;
+      const k = Math.min(hs.length, Math.max(1, Math.ceil(ratio * hs.length)));
+      for (let i = 0; i < k; i++) {
+        const h = hs[i];
+        hexFeatures.push({
+          type: "Feature",
+          geometry: { type: "Polygon", coordinates: [h.polygon] },
+          properties: {
+            barrio: b.id,
+            color: colorRiesgo(ratio),
+            opacity: 0.35 + 0.45 * ratio,
+          },
+        });
+      }
+    }
+    (map.getSource("hexes") as maplibregl.GeoJSONSource)?.setData({
+      type: "FeatureCollection",
+      features: hexFeatures,
+    });
+
     const edificios = (catalogo?.edificios ?? []).map((e) => ({
       type: "Feature" as const,
       geometry: { type: "Point" as const, coordinates: [e.lng, e.lat] },
@@ -339,7 +449,7 @@ export default function EpidemicMap({ barrios, catalogo, dia, movimientos, brote
       features: eventosFeatures as any,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapLoaded, barrios, catalogo, movimientos, brotes]);
+  }, [mapLoaded, barrios, catalogo, movimientos, brotes, hexGrid, hexesPorBarrio]);
 
   const moverCamara = (pitch: number, bearing: number, zoom?: number) => {
     const map = mapRef.current;
