@@ -96,10 +96,10 @@ interface SimulationContextValue {
   error: string | null;
 
   /** Ejecuta POST /comparar con los parámetros actuales. Devuelve el resultado o null si falla. */
-  comparar: (eventosOverride?: CompararRequest["eventos"]) => Promise<CompararResponse | null>;
+  comparar: (eventosOverride?: CompararRequest["eventos"], intervencionesOverride?: CompararRequest["intervenciones"]) => Promise<CompararResponse | null>;
 
   /** Carga una trayectoria determinista para la estrategia indicada. */
-  cargarTrayectoria: (estrategia?: string) => Promise<void>;
+  cargarTrayectoria: (estrategia?: string, intervencionesOverride?: CompararRequest["intervenciones"]) => Promise<void>;
 
   /** Día seleccionado para recorrer las curvas (0..dias). */
   dia: number;
@@ -185,13 +185,14 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setParams(construirDefaults(meta));
   };
 
-  const cargarTrayectoria = async (estrategia?: string) => {
+  const cargarTrayectoria = async (estrategia?: string, intervencionesOverride?: CompararRequest["intervenciones"]) => {
     const baseParams = paramsEjecutados ?? params;
     const estr = estrategia ?? estrategiaSeleccionada;
     setCargando(true);
     setError(null);
     try {
       const ev = brotes.length > 0 ? (brotesAEventos(brotes) ?? undefined) : undefined;
+      const iv = intervencionesOverride !== undefined ? (intervencionesOverride ?? undefined) : undefined;
       const cuerpo: TrayectoriaRequest = {
         beta: baseParams.beta,
         dosis_dia: baseParams.dosis_dia,
@@ -204,6 +205,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
         movilidad_zombie: 0.05,
         via_transmision: viaTransmision,
         eventos: ev,
+        intervenciones: iv,
         estrategia: estr,
       };
       const res = await obtenerTrayectoria(cuerpo);
@@ -230,7 +232,7 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     });
   };
 
-  const comparar = async (eventosOverride?: CompararRequest["eventos"]): Promise<CompararResponse | null> => {
+  const comparar = async (eventosOverride?: CompararRequest["eventos"], intervencionesOverride?: CompararRequest["intervenciones"]): Promise<CompararResponse | null> => {
     // Cancela una comparación anterior aún en vuelo.
     comparaEnCurso.current?.abort();
     const ctrl = new AbortController();
@@ -240,7 +242,8 @@ export function SimulationProvider({ children }: { children: React.ReactNode }) 
     setError(null);
     try {
       const ev = eventosOverride !== undefined ? eventosOverride : (brotes.length > 0 ? brotesAEventos(brotes) : eventos);
-      const cuerpo: CompararRequest = { ...params, via_transmision: viaTransmision, eventos: ev };
+      const iv = intervencionesOverride !== undefined ? (intervencionesOverride ?? undefined) : undefined;
+      const cuerpo: CompararRequest = { ...params, via_transmision: viaTransmision, eventos: ev, intervenciones: iv };
       const res = await compararEstrategias(cuerpo, ctrl.signal);
       setResultado(res);
       setParamsEjecutados({ ...params });

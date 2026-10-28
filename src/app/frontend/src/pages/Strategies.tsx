@@ -1,117 +1,128 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useSimulation } from "../context/SimulationContext";
 import PageTitle from "../components/ui/PageTitle";
 import Card from "../components/ui/Card";
 import Pill from "../components/ui/Pill";
-import { nombreAmigable, DESCRIPCIONES_ESTRATEGIA, esLineaBase } from "../utils/estrategias";
 
-const num = (n: number) => Math.round(n).toLocaleString("es-EC");
+const ESPECIALES = [
+  { nombre: "Bloqueo de emergencia", id: "BloqueoEmergencia", util: "Hordas y corredores", efecto: "Reduce desplazamientos entre sectores", duracion: "7 días", limitacion: "No elimina contagios existentes" },
+  { nombre: "Vigilancia intensiva", id: "VigilanciaIntensiva", util: "Acechadores y brotes ocultos", efecto: "Mejora detección", duracion: "10 días", limitacion: "Consume recursos" },
+  { nombre: "Evacuación preventiva", id: "EvacuacionPreventiva", util: "Sectores de alto riesgo", efecto: "Traslada susceptibles", duracion: "7 días", limitacion: "Riesgo de traslado" },
+  { nombre: "Aislamiento focalizado", id: "AislamientoFocalizado", util: "Chasqueadores y brotes secundarios", efecto: "Reduce contactos en sectores", duracion: "7 días", limitacion: "Afecta movilidad" },
+  { nombre: "Refuerzo de contención", id: "RefuerzoContencion", util: "Gordinflones y fallos", efecto: "Reduce fallo de barreras", duracion: "10 días", limitacion: "No cura infectados" },
+  { nombre: "Control de esporas", id: "ControlEsporas", util: "Gordinflones", efecto: "Reduce exposición a esporas", duracion: "10 días", limitacion: "Solo vía esporas" },
+];
 
 export default function Strategies() {
-  const { resultado, cargando, error } = useSimulation();
+  const { comparar } = useSimulation();
+  const [decisiones, setDecisiones] = useState([
+    { dia: 0, estrategia: "CierresMasCentralidad", duracion: 60 },
+    { dia: 30, estrategia: "BloqueoEmergencia", duracion: 10 },
+  ]);
+  const [ejecutando, setEjecutando] = useState(false);
 
-  if (cargando) {
-    return (
-      <div>
-        <Cabecera />
-        <Card>
-          <div className="loading">
-            <span className="spinner" aria-hidden="true" /> Calculando estrategias…
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div>
-        <Cabecera />
-        <Card>
-          <div className="error-box" role="alert">
-            <strong>No se pudieron cargar las estrategias.</strong>
-            <div style={{ marginTop: 4 }}>{error}</div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!resultado) {
-    return (
-      <div>
-        <Cabecera />
-        <Card>
-          <div className="empty">
-            Primero ejecuta una comparación en{" "}
-            <Link to="/simulador">Configuración del Simulador</Link>.
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  const estrategias = resultado.estrategias;
+  const simularPlan = async () => {
+    setEjecutando(true);
+    const intervenciones = decisiones.map((d) => ({ dia: d.dia, estrategia: d.estrategia, duracion: d.duracion }));
+    await comparar(undefined, intervenciones);
+    setEjecutando(false);
+  };
 
   return (
     <div>
-      <Cabecera />
-      <div className="grid grid-3">
-        {estrategias.map((e) => {
-          const esMejor = e.nombre === resultado.mejor_estrategia;
-          return (
-            <div key={e.nombre} className={`strat-card ${esMejor ? "recommended" : ""}`}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 700 }}>{nombreAmigable(e.nombre)}</div>
-                {esMejor && <Pill color="green">Recomendada</Pill>}
-                {esLineaBase(e.nombre) && <Pill color="orange">Línea base</Pill>}
-              </div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                {DESCRIPCIONES_ESTRATEGIA[e.nombre]}
-              </div>
-              <div style={{ marginTop: 10, fontSize: 13, color: "var(--muted)" }}>
-                <div>
-                  Infectados (media):{" "}
-                  <strong style={{ color: "var(--text)" }}>{num(e.infectados_media)}</strong>
-                </div>
-                <div>
-                  Salvados (media):{" "}
-                  <strong style={{ color: "var(--text)" }}>{num(e.salvados_media)}</strong>
-                </div>
-                <div>
-                  Rango infectados p10–p90:{" "}
-                  <strong style={{ color: "var(--text)" }}>
-                    {num(e.infectados_p10)} – {num(e.infectados_p90)}
-                  </strong>
-                </div>
-                <div>
-                  Mejor que “Nada”:{" "}
-                  <strong style={{ color: "var(--text)" }}>{e.pct_mejor_que_nada.toFixed(0)}%</strong>
-                </div>
-                <div>
-                  Mejor que “Azar”:{" "}
-                  <strong style={{ color: "var(--text)" }}>{e.pct_mejor_que_azar.toFixed(0)}%</strong>
-                </div>
-              </div>
+      <PageTitle title="Estrategias de Intervención" subtitle="Planificación y comparación" right={<Pill color="orange">DATOS SIMULADOS</Pill>} />
+
+      <Card title="Estrategias originales">
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          {["Nada", "Azar", "Centralidad", "CierresMasCentralidad", "Anillo"].map((e) => (
+            <div key={e} className="strat-card">
+              <strong>{e}</strong>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      </Card>
 
       <div style={{ height: 16 }} />
-      <Card title="Recomendación">
-        <p style={{ color: "var(--muted)", fontSize: 14 }}>{resultado.recomendacion}</p>
+
+      <Card title="Estrategias especiales">
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+          {ESPECIALES.map((e) => (
+            <div key={e.id} className="strat-card">
+              <strong>{e.nombre}</strong>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Útil contra: {e.util}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Efecto: {e.efecto}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Duración: {e.duracion}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Limitación: {e.limitacion}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{ height: 16 }} />
+
+      <Card title="Planificador estratégico">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {decisiones.map((d, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ minWidth: 50, fontWeight: 700 }}>Día {d.dia}</span>
+              <select
+                value={d.estrategia}
+                onChange={(e) => {
+                  const nd = [...decisiones];
+                  nd[idx].estrategia = e.target.value;
+                  setDecisiones(nd);
+                }}
+                style={selectStyle}
+              >
+                <option value="CierresMasCentralidad">Cierres + centralidad</option>
+                <option value="BloqueoEmergencia">Bloqueo de emergencia</option>
+                <option value="VigilanciaIntensiva">Vigilancia intensiva</option>
+                <option value="EvacuacionPreventiva">Evacuación preventiva</option>
+                <option value="AislamientoFocalizado">Aislamiento focalizado</option>
+                <option value="RefuerzoContencion">Refuerzo de contención</option>
+                <option value="ControlEsporas">Control de esporas</option>
+              </select>
+              <input
+                type="number"
+                value={d.dia}
+                onChange={(e) => {
+                  const nd = [...decisiones];
+                  nd[idx].dia = Number(e.target.value);
+                  setDecisiones(nd);
+                }}
+                style={{ ...selectStyle, width: 80 }}
+              />
+              <input
+                type="number"
+                value={d.duracion}
+                onChange={(e) => {
+                  const nd = [...decisiones];
+                  nd[idx].duracion = Number(e.target.value);
+                  setDecisiones(nd);
+                }}
+                style={{ ...selectStyle, width: 80 }}
+              />
+            </div>
+          ))}
+          <button
+            className="btn ghost"
+            onClick={() => setDecisiones([...decisiones, { dia: 30, estrategia: "BloqueoEmergencia", duracion: 10 }])}
+          >
+            Agregar decisión
+          </button>
+          <button className="btn primary" onClick={simularPlan} disabled={ejecutando}>
+            {ejecutando ? "Simulando…" : "Simular plan"}
+          </button>
+        </div>
       </Card>
     </div>
   );
 }
 
-function Cabecera() {
-  return (
-    <PageTitle
-      title="Estrategias de Intervención"
-      subtitle="Comparación de las 5 estrategias según el backend"
-      right={<Pill color="orange">DATOS SIMULADOS</Pill>}
-    />
-  );
-}
+const selectStyle: React.CSSProperties = {
+  padding: 8,
+  background: "#0C141D",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+};
