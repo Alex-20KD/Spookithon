@@ -69,8 +69,9 @@ export default function MapPage() {
       return;
     }
     timerRef.current = window.setInterval(() => {
-      setDia((prev) => {
-        if (prev >= params.dias) {
+      const maxDias = paramsEjecutados?.dias ?? params.dias;
+    setDia((prev) => {
+        if (prev >= maxDias) {
           setReproduciendo(false);
           return 0;
         }
@@ -253,7 +254,7 @@ export default function MapPage() {
               </button>
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>
-              Día actual: {dia} / {params.dias}
+              Día actual: {dia} / {paramsEjecutados?.dias ?? params.dias}
             </div>
             <div className="range-control" style={{ marginTop: 8, marginBottom: 0 }}>
               <label>
@@ -263,7 +264,7 @@ export default function MapPage() {
               <input
                 type="range"
                 min={0}
-                max={params.dias}
+                max={paramsEjecutados?.dias ?? params.dias}
                 step={1}
                 value={dia}
                 onChange={(e) => { setReproduciendo(false); setDia(Number(e.target.value)); }}
