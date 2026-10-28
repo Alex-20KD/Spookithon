@@ -229,9 +229,27 @@ def construir_red(poblacion: int, semilla: int, catalogo: dict | None = None) ->
     coords_lugar: list[tuple[float, float]] = [(-80.72, -0.95)] * len(ids_lugar)
     for b in barrios:
         coords_lugar[idx_barrio[b["id"]]] = (float(b["lng"]), float(b["lat"]))
+    for e in edificios:
+        for i, lid in enumerate(ids_lugar):
+            if lid == e["id"]:
+                coords_lugar[i] = (float(e["lng"]), float(e["lat"]))
+    # Hogares: asignar al barrio de sus miembros.
+    persona_actual = 0
+    for h, t in enumerate(tamanos):
+        if t > 0:
+            p0 = persona_actual
+            bpos = barrio_persona[p0] if p0 < poblacion else None
+            if bpos is not None and bpos < len(coords_lugar) and coords_lugar[bpos] != (-80.72, -0.95):
+                coords_lugar[idx_hogares[h]] = coords_lugar[bpos]
+        persona_actual += t
+    # Buses/mercados/hospitales/colegios sin coord: dispersar por barrios.
+    rng2 = np.random.default_rng(semilla + 999)
     for i, lid in enumerate(ids_lugar):
         if coords_lugar[i] == (-80.72, -0.95):
-            coords_lugar[i] = (-80.72 + (i % 5) * 0.002, -0.95 + (i % 7) * 0.002)
+            bidx = int(rng2.integers(0, len(barrios)))
+            b = barrios[bidx]
+            coords_lugar[i] = (float(b["lng"]) + float(rng2.uniform(-0.003, 0.003)),
+                               float(b["lat"]) + float(rng2.uniform(-0.003, 0.003)))
 
     # Vecinos geográficos (3 más cercanos por distancia euclidiana en lat/lng).
     n_barrios = len(barrios)
